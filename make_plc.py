@@ -1,22 +1,22 @@
 
 import os
-import sys
+from argparse import ArgumentParser
 from xml.etree import ElementTree as ET
 
 import pandas as pd
 
 
-def get_modbus_address_df(file_name):
-    modbus_df = pd.read_csv(f'{file_name}.csv')
+def get_modbus_address_df(file_name, file_path):
+    modbus_df = pd.read_csv(f'{file_path}\{file_name}.csv')
     modbus_df = modbus_df.fillna(0)
     modbus_df.set_index(keys=["id"], inplace=True)
     for column in modbus_df.columns:
         modbus_df[column] = pd.to_numeric(modbus_df[column], downcast='integer')
     return modbus_df
 
-def get_th_value_df(file_name):
-    if os.path.isfile(f'{file_name}_th.csv'):
-        th_df = pd.read_csv(f'{file_name}_th.csv', encoding='big5')
+def get_th_value_df(file_name, file_path):
+    if os.path.isfile(f'{file_path}\{file_name}_th.csv'):
+        th_df = pd.read_csv(f'{file_path}\{file_name}_th.csv', encoding='big5')
         th_df = th_df.fillna(0)
         th_df.set_index(keys=["name"], inplace=True)
 
@@ -55,7 +55,7 @@ def set_max_th_to_ion_summary_df(ion_detail_df, ion_summary_df, th_df):
 def set_data_to_ion_xml(ion_root, ion_namespaces, th, class_id, mame, default_name):
     x = ion_root.find(f'.//t:ION[@t:H="{class_id}"]', ion_namespaces)
     ion = x.find(f'.//t:ION[@t:N="{default_name}"]', ion_namespaces)
-    print(ion.attrib)
+    # print(ion.attrib)
     new_ion = ET.SubElement(x[0], 't:ION', attrib=ion.attrib) # 本身就會自己建立
     new_ion.set("{x-schemas:x-pmlsystem:/schemas/tree-ionobjs.0.4.xml}N", str(mame))
     new_ion.set("{x-schemas:x-pmlsystem:/schemas/tree-ionobjs.0.4.xml}H", str(th))
@@ -79,7 +79,7 @@ def save_ion_xml(ion_tree, fimename='lab1.xml'):
     ET.indent(ion_tree, space="\t")
     ion_tree.write(fimename, xml_declaration=True, encoding='utf-8')
 
-    with open(fimename, 'r') as f:
+    with open(fimename, 'r', encoding='utf-8') as f:
         data = f.read()
         data = data.replace('ns1:', 't:')
         data = data.replace('xmlns:ns0', 'xmlns')
@@ -93,7 +93,7 @@ def save_ion_xml(ion_tree, fimename='lab1.xml'):
 def save_xml(xml_tree, fimename='xml1.xml'):
     ET.indent(xml_tree, space="\t")
     xml_tree.write(fimename, xml_declaration=True, encoding='utf-8')
-    with open(fimename, 'r') as f:
+    with open(fimename, 'r', encoding='utf-8') as f:
         data = f.read()
         data = data.replace('xmlns:ns0', 'xmlns')
         data = data.replace(' /', '/')
@@ -102,12 +102,12 @@ def save_xml(xml_tree, fimename='xml1.xml'):
     with open(fimename, 'w') as f:
         f.write(data)
 
-def main(file_name):
+def main(file_name, file_path):
     # 讀取資料
     ion_detail_df = pd.read_csv('PLC_data/ion_detail.csv')
     ion_summary_df = pd.read_csv('PLC_data/ion_summary.csv')
-    modbus_df = get_modbus_address_df(file_name)
-    th_df = get_th_value_df(file_name)
+    modbus_df = get_modbus_address_df(file_name, file_path)
+    th_df = get_th_value_df(file_name, file_path)
     format_df = get_format_df()
     set_max_th_to_ion_summary_df(ion_detail_df, ion_summary_df, th_df)
 
@@ -152,10 +152,21 @@ def main(file_name):
 
     th_df.index.name='name'
     # th_df.to_csv(f'{file_name}_th.csv', encoding='big5') # 分配過的th值 存檔
-    save_ion_xml(ion_tree, f"{file_name}.ion")
-    save_xml(xml_tree, f"{file_name}.xml")
-    with open(f'{file_name}_output_logic.csv', 'w', encoding='big5') as f:
+    save_ion_xml(ion_tree, f"{file_path}\{file_name}.ion")
+    save_xml(xml_tree, f"{file_path}\{file_name}.xml")
+    with open(f'{file_path}\{file_name}_output_logic.csv', 'w', encoding='big5') as f:
         f.write(logic_text)
 
+
+def createArgumentParser():
+    """解析參數"""
+    parser = ArgumentParser()
+    parser.add_argument("-f", help="檔案名稱(不要含附檔名)", dest="file_name", default=None)
+    parser.add_argument("-p", help="檔案路徑", dest="file_path", default='.')
+    args = parser.parse_args()
+    return args
+
 if __name__ == '__main__':
-    main(sys.argv[1])
+    args = createArgumentParser()
+    main(args.file_name, args.file_path)
+    print('處理完成')
