@@ -1,0 +1,13 @@
+﻿name,format,Scale
+Voltage A-B,IEEEFloat,
+Voltage B-C,IEEEFloat,
+Voltage C-A,IEEEFloat,
+Current A,IEEEFloat,
+Current B,IEEEFloat,
+Current C,IEEEFloat,
+Current Avg,IEEEFloat,
+Frequency,IEEEFloat,
+Active Power,IEEEFloat,
+Power Factor,IEEEFloat,
+Active Energy Into the Load,IEEEFloat,
+Equipment State,PackedBool,
