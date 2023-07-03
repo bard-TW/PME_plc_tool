@@ -13,10 +13,10 @@ PLC設備數量很多，常常修修改改，這會是一個很棒的工具。
 
 1. 請下載執行檔
 2. 請將 帶有 PLC_data 的資料夾，下載並放置在執行檔相同目錄
-3. 請按照範例 [點位表.csv](PLC_data\example\點位表.csv)，
+3. 請按照範例 [點位表.csv](PLC_data/example/點位表.csv)，
    欄位名稱填入測量值
    列名填入裝置名稱
-4. [plc_format.csv](PLC_data\plc_format.csv) 填入format格式
+4. [plc_format.csv](PLC_data/plc_format.csv) 填入format格式
 5. 執行以下指令
 
 ```bash
