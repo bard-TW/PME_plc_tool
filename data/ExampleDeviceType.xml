@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ModbusMap xmlns="x-schema:modbus-schema.xml">
-	<DeviceInfo Type="New Modbus Device" MaxRequestRegisters="125" GlobalNotAvailable="NotSpecified" MDISupported="2" EthernetSupport="0" LowSpeedUpdateRate="600" HighSpeedUpdateRate="120" DateTimeValidation="0"/>
-</ModbusMap>

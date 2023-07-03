@@ -104,21 +104,21 @@ def save_xml(xml_tree, fimename='xml1.xml'):
 
 def main(file_name):
     # 讀取資料
-    ion_detail_df = pd.read_csv('data/ion_detail.csv')
-    ion_summary_df = pd.read_csv('data/ion_summary.csv')
+    ion_detail_df = pd.read_csv('PLC_data/ion_detail.csv')
+    ion_summary_df = pd.read_csv('PLC_data/ion_summary.csv')
     modbus_df = get_modbus_address_df(file_name)
     th_df = get_th_value_df(file_name)
     format_df = get_format_df()
     set_max_th_to_ion_summary_df(ion_detail_df, ion_summary_df, th_df)
 
     # ion 的 xml 讀取
-    ion_xmifile = 'data/ExampleDeviceType.ion.xml'
+    ion_xmifile = 'PLC_data/ExampleDeviceType.ion.xml'
     ion_tree = ET.parse(ion_xmifile)
     ion_root = ion_tree.getroot()
     ion_namespaces = {'t': 'x-schemas:x-pmlsystem:/schemas/tree-ionobjs.0.4.xml'}
 
     # xml 讀取
-    xml_xmifile = 'data/ExampleDeviceType.xml'
+    xml_xmifile = 'PLC_data/ExampleDeviceType.xml'
     xml_tree = ET.parse(xml_xmifile)
     xml_root = xml_tree.getroot()
 
