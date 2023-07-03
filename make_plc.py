@@ -87,7 +87,7 @@ def save_ion_xml(ion_tree, fimename='lab1.xml'):
         data = data.replace(' /', '/')
         data = data.replace('ns0:XMLIONTree', 'XMLIONTree')
 
-    with open(fimename, 'w') as f:
+    with open(fimename, 'w', encoding='utf-8') as f:
         f.write(data)
 
 def save_xml(xml_tree, fimename='xml1.xml'):
@@ -99,7 +99,7 @@ def save_xml(xml_tree, fimename='xml1.xml'):
         data = data.replace(' /', '/')
         data = data.replace('ns0:', '')
 
-    with open(fimename, 'w') as f:
+    with open(fimename, 'w', encoding='utf-8') as f:
         f.write(data)
 
 def main(file_name, file_path):
@@ -151,7 +151,7 @@ def main(file_name, file_path):
             logic_text += f'"{index}","","","","{mame}","{output_Measurement}",{th}\n'
 
     th_df.index.name='name'
-    # th_df.to_csv(f'{file_name}_th.csv', encoding='big5') # 分配過的th值 存檔
+    th_df.to_csv(f'{file_path}\{file_name}_th.csv', encoding='big5') # 分配過的th值 存檔
     save_ion_xml(ion_tree, f"{file_path}\{file_name}.ion")
     save_xml(xml_tree, f"{file_path}\{file_name}.xml")
     with open(f'{file_path}\{file_name}_output_logic.csv', 'w', encoding='big5') as f:
