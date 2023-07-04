@@ -161,8 +161,8 @@ def main(file_name, file_path):
 def createArgumentParser():
     """解析參數"""
     parser = ArgumentParser()
-    parser.add_argument("-f", help="檔案名稱(不要含附檔名)", dest="file_name", default=None)
-    parser.add_argument("-p", help="檔案路徑", dest="file_path", default='.')
+    parser.add_argument("-f", required=True, help="檔案名稱(不要含附檔名)", dest="file_name")
+    parser.add_argument("-p", required=True, help="檔案路徑", dest="file_path")
     args = parser.parse_args()
     return args
 
