@@ -26,9 +26,9 @@ def get_th_value_df(file_name, file_path):
         th_df = pd.DataFrame()
     return th_df
 
-def get_format_df():
-    if os.path.isfile(f'plc_format.csv'):
-        format_df = pd.read_csv(f'plc_format.csv')
+def get_format_df(file_path):
+    if os.path.isfile(f'{file_path}\plc_format.csv'):
+        format_df = pd.read_csv(f'{file_path}\plc_format.csv')
         format_df.set_index(keys=["name"], inplace=True)
     else:
         format_df = pd.DataFrame()
@@ -108,7 +108,7 @@ def main(file_name, file_path):
     ion_summary_df = pd.read_csv('PLC_data/ion_summary.csv')
     modbus_df = get_modbus_address_df(file_name, file_path)
     th_df = get_th_value_df(file_name, file_path)
-    format_df = get_format_df()
+    format_df = get_format_df(file_path)
     set_max_th_to_ion_summary_df(ion_detail_df, ion_summary_df, th_df)
 
     # ion 的 xml 讀取
@@ -127,6 +127,8 @@ def main(file_name, file_path):
         for columns in modbus_df.columns:
             mame = f"{columns} ({index})"
             ModbusAddress = modbus_df.loc[index, columns]
+            if not ModbusAddress:
+                continue
 
             # tp 值
             df = ion_detail_df[ion_detail_df['default_name'] == columns]

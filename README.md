@@ -2,6 +2,8 @@
 
 為施耐德的PME所寫的方便小工具
 
+建議使用powershell，含有中文字使用CMD會出問題
+
 ## make_plc
 
 透過提供設備名與測量值對應填入modbus address，產生出"Device Type Editor"所需要的檔案，和導入邏輯設備的檔案，  
@@ -32,12 +34,13 @@ PLC設備數量很多，常常修修改改，這會是一個很棒的工具。
 python .\make_plc.py  -f '點位表' -p '.\PLC_data\example'
 ```
 
-6. 檔案介紹
+檔案介紹
    點位表.csv : 必須提供，紀錄設備與測量值對應的modbus點位
    點位表_th.csv : 初次建立會自行產生，紀錄在ION裡的th值，防止產生資料與PME無法對應
    點位表.ion : measurement tree
    點位表.xml : modbus map
    點位表_output_logic.csv : 導入邏輯設備(需自行再加工)
+   plc_format.csv: 需提供，與點位表.csv相同位置
    檔案編碼，utf-8 或 big5
 
 

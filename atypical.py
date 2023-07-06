@@ -37,6 +37,7 @@ class AllOutoutMode(ModeInterface):
 
 def filter_data(data, list_data):
     if data.name in list_data:
+        print(data.name)
         return 1
     return 0
 
@@ -125,7 +126,16 @@ def createArgumentParser():
         description=dedent(
             '''\
             PME SQL語法
-
+            SELECT DataLog.ID, DataLog.Value, 
+            DataLog.TimestampUTC,
+            [Source].ID as SourceID , [Source].DisplayName, 
+            Quantity.ID as QuantityID , Quantity.Name
+            FROM ION_Data.dbo.DataLog2 as DataLog
+            JOIN ION_Data.dbo.[Source] as [Source] ON DataLog.SourceID = [Source].ID
+            JOIN ION_Data.dbo.Quantity as Quantity ON DataLog.QuantityID = Quantity.ID
+            WHERE DataLog.TimestampUTC BETWEEN '2023-06-30 08:00:00' AND '2023-07-02 08:00:00'
+            AND Quantity.ID = 129
+            ORDER BY DataLog.TimestampUTC DESC
             -----------------------------------------------------------------------
             過濾模式說明
             -m 1: 有負數或有4分位數99%的2倍以上的異常值，挑取出來(預設模式)
