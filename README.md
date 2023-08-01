@@ -75,4 +75,5 @@ python .\atypical.py  -f 'yourdata.csv' -p '.\your\path'
 ```bash
 pyinstaller -F .\make_plc.py
 pyinstaller -F .\atypical.py
+pyinstaller -F .\modbus.py
 ```
