@@ -657,6 +657,7 @@
 							<t:ION t:SA="RegisterObj" t:H="205522701" t:P="205522688" t:N="Weather Temperature Rate of Change (deg C/min)" t:CI="NumericVariable_Register"/>
 							<t:ION t:SA="RegisterObj" t:H="205522702" t:P="205522688" t:N="Weather Temperature Rate of Change (deg F/h)" t:CI="NumericVariable_Register"/>
 							<t:ION t:SA="RegisterObj" t:H="205522703" t:P="205522688" t:N="Weather Temperature Rate of Change (deg F/min)" t:CI="NumericVariable_Register"/>
+							<t:ION t:SA="RegisterObj" t:H="205522704" t:P="205522688" t:N="Weather Dew Point Temperature Celsius" t:CI="NumericVariable_Register"/>
 						</t:OH>
 					</t:ION>
 					<t:ION t:SA="ModuleObj" t:H="205523200" t:P="196" t:N="Environmental Other" t:CI="Universal_Module">

@@ -16,7 +16,7 @@ def get_modbus_address_df(file_name, file_path):
 
 def get_th_value_df(file_name, file_path):
     if os.path.isfile(f'{file_path}\{file_name}_th.csv'):
-        th_df = pd.read_csv(f'{file_path}\{file_name}_th.csv', encoding='big5')
+        th_df = pd.read_csv(f'{file_path}\{file_name}_th.csv', dtype={'Voltage A-B' : int, 'Voltage B-C' : int, 'Voltage C-A' : int, 'Current A' : int, 'Current B' : int, 'Current C' : int, 'Current Avg' : int, 'Frequency' : int, 'Active Power' : int, 'Power Factor' : int, 'Active Energy Into the Load': int}, encoding='big5')
         th_df = th_df.fillna(0)
         th_df.set_index(keys=["name"], inplace=True)
 

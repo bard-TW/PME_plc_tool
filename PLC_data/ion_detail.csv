@@ -428,6 +428,7 @@ Environmental,205522688,Weather,205522700,Weather Temperature Rate of Change (de
 Environmental,205522688,Weather,205522701,Weather Temperature Rate of Change (deg C/min),RegisterObj,NumericVariable_Register,
 Environmental,205522688,Weather,205522702,Weather Temperature Rate of Change (deg F/h),RegisterObj,NumericVariable_Register,
 Environmental,205522688,Weather,205522703,Weather Temperature Rate of Change (deg F/min),RegisterObj,NumericVariable_Register,
+Environmental,205522688,Weather,205522704,Weather Dew Point Temperature Celsius,RegisterObj,NumericVariable_Register,
 Environmental,205523200,Environmental Other,205523201,Atmospheric Pressure (Hour Interval),RegisterObj,NumericVariable_Register,
 Environmental,205523200,Environmental Other,205523202,CO2 Concentration Indoor (ppm),RegisterObj,NumericVariable_Register,
 Environmental,205523200,Environmental Other,205523203,CO2 Concentration Outdoor (ppm),RegisterObj,NumericVariable_Register,

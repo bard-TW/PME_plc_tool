@@ -1,7 +1,8 @@
 import re
 import time
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from multiprocessing import Pool, cpu_count, freeze_support
+from textwrap import dedent
 
 import pandas as pd
 from pymodbus.client import ModbusTcpClient
@@ -51,7 +52,7 @@ def job(ip, port=502, device_id=1, address=6001, device_name='', modbus_point_ty
             TIMEOUT += 1
 
         finally:
-            # 關閉客戶端連線 #TODO 常連結跑完才關閉
+            # 關閉客戶端連線 #TODO 長連結跑完才關閉
             client.close()
         time.sleep(delay)
     return {'ip': ip, 'device_id': device_id, 'NOT_CONNECTION': NOT_CONNECTION, 'TIMEOUT': TIMEOUT, 'READ_VALUE_ERROR': READ_VALUE_ERROR, 'SUCCESS': SUCCESS}
@@ -81,12 +82,24 @@ def main(file, modbus_point_type, number_of_polls, delay):
 
 def createArgumentParser():
     """解析參數"""
-    parser = ArgumentParser()
+    parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter,
+        description=dedent(
+            '''
+            -u 192.168.1.1:502/1/6001 --m 3 -n 3 -d 1
+            -f 檔案名稱 -n 3 -d 1
+
+            寄存器類型:
+            1 : read_coils
+            2 : read_discrete_inputs
+            3 : read_holding_registers (預設)
+            4 : read_input_registers
+            '''
+        ))
     parser.add_argument("-u", "--url", help="192.168.1.1:502/1/6001 ip:port/device_id/address", dest="url")
     parser.add_argument("--device_name", help="設備名稱", dest="device_name", default='')
-    parser.add_argument("--mpt", type=int, help="寄存器類型", dest="modbus_point_type", default=3)
-    parser.add_argument("--nop", type=int, help="讀取次數", dest="number_of_polls", default=3)
-    parser.add_argument("--delay", type=int, help="延遲秒數", dest="delay", default=1)
+    parser.add_argument("-m", type=int, help="寄存器類型(數字)詳細請看 -h", dest="modbus_point_type", default=3)
+    parser.add_argument("-n", type=int, help="讀取次數", dest="number_of_polls", default=3)
+    parser.add_argument("-d", type=int, help="延遲秒數", dest="delay", default=1)
     parser.add_argument("-f", "--file", help="檔案", dest="file", default='')
 
     args = parser.parse_args()
