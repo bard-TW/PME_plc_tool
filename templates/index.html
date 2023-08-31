@@ -28,7 +28,7 @@
                 <div class="row g-2 my-2">
                     <div class="col-sm-8">
                         <div class="form-floating">
-                            <input type="text" class="form-control" id="ip" placeholder="192.168.0.1" value="">
+                            <input type="text" class="form-control" id="ip" placeholder="192.168.0.1" value="127.0.0.1">
                             <label for="floatingInputGrid">IP</label>
                         </div>
                     </div>
@@ -41,7 +41,7 @@
                 </div>
 
 
-                <div class="row g-2 my-2">
+                <div class="row g-2 my-2 on_change">
                     <div class="col-sm-4">
                         <div class="form-floating">
                             <input type="number" class="form-control" id="slave" placeholder="1" value="1">
@@ -61,53 +61,14 @@
                     </div>
                 </div>
 
-
-                <div class="row g-2 my-2" style="border: 2px solid rgb(128, 236, 255);">
-                    <div class="input-group">
-
-                        <label class="input-group-text" for="log1">
-                            <input class="form-check-input mt-0" type="checkbox" value=""
-                                aria-label="Checkbox for following text input" id="log1" title="紀錄Logs">
-                        </label>
-
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="title" placeholder="欄位名稱">
-                            <label for="title">logs的欄位名稱</label>
-                        </div>
-                        <span class="input-group-text" id="basic-addon1" title="及時顯示資料">123456</span>
-                    </div>
-
-                    <div class="input-group my-2">
-                        <div class="form-floating">
-                            <input type="number" class="form-control" id="address" placeholder="點位" value="3000">
-                            <label for="title">點位</label>
-                        </div>
-
-                        <div class="form-floating">
-                            <select class="form-select" id="data_type">
-                                <option value="1" selected>Int</option>
-                                <option value="2">uInt</option>
-                                <option value="3">Float</option>
-                            </select>
-                            <label for="data_type">資料型態</label>
-                        </div>
-
-                        <div class="form-floating">
-                            <select class="form-select" id="bit_num">
-                                <option value="16">16 bit</option>
-                                <option value="32" selected>32 bit</option>
-                                <option value="64">64 bit</option>
-                            </select>
-                            <label for="bit_num">位元</label>
-                        </div>
-                        <button class="btn btn-outline-danger" type="button"><i class="bi bi-trash-fill"></i></button>
-                    </div>
+                <div id="container" class="on_change">
                 </div>
 
-                <button type="button" class="btn btn-outline-danger" id="disconnect_modbus_btu" onclick="disconnect_modbus()" disabled>中斷連線</button>
-                <button type="button" class="btn btn-outline-info">新增測量</button>
-                <button type="button" class="btn btn-outline-primary" id="connect_modbus_btu" onclick="connect_modbus()">連線</button>
+                <div id="progressbar" class="g-2 my-2"></div><!-- 進度條 -->
 
+                <button type="button" class="btn btn-outline-danger" id="disconnect_modbus_btu" onclick="disconnect_modbus()" disabled>中斷連線</button>
+                <button type="button" class="btn btn-outline-info" onclick="add_point()">新增測量點</button>
+                <button type="button" class="btn btn-outline-primary" id="connect_modbus_btu" onclick="connect_modbus()">連線</button>
             </div>
             <div class="col-lg-7 col-xl-8">
                 <h3>Logs 表格</h3>
@@ -115,21 +76,10 @@
         </div>
     </div>
 
-
-
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
     <script type="text/javascript">
         var socket = io.connect();
-
-        socket.on('status_response', function (data) {
-            console.log(data);
-            // 在这里处理接收到的数据，可以更新页面内容或执行其他操作
-        });
-
-
-        // 
-
+        var divCount = 0;
 
         socket.on('disconnect', function (data) {
             alert('與伺服器連線中斷，請重新整理頁面')
@@ -138,28 +88,133 @@
 
         // socket.emit('my event', {data: 'I\'m connected!'});
         function connect_modbus() {
+            // 連線
             ip = $("#ip").val()
             port = $("#port").val()
             socket.emit("connect_modbus", ip, port);
+            
+            $("#connect_modbus_btu").prop("disabled", true);
+            $("#ip").prop("disabled", true);
+            $("#port").prop("disabled", true);
 
-            // $("#disconnect_modbus_btu").prop("disabled", false);
-            // $("#connect_modbus_btu").prop("disabled", true);
+            $("#progressbar").html(`<div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 50%">連線中</div>
+            </div>
+            `)
+
         }
 
         function disconnect_modbus() {
-            socket.emit("connect_modbus", "world");
-            // $("#disconnect_modbus_btu").prop("disabled", true);
-            // $("#connect_modbus_btu").prop("disabled", false);
-
+            // 中斷連線
+            socket.emit("disconnect_modbus");
+            $("#disconnect_modbus_btu").prop("disabled", true);
+            $("#connect_modbus_btu").prop("disabled", false);
+            $("#ip").prop("disabled", false);
+            $("#port").prop("disabled", false);
         }
 
+        socket.on('connect_modbus_error', function (data) {
+            // 無法連線
+            alert(data.data)
+            $("#disconnect_modbus_btu").prop("disabled", true);
+            $("#connect_modbus_btu").prop("disabled", false);
+            $("#progressbar").html('')
+            $("#ip").prop("disabled", false);
+            $("#port").prop("disabled", false);
+        });
 
+        socket.on('connect_modbus_success', function (data) {
+            // 連線成功
+            $("#disconnect_modbus_btu").prop("disabled", false);
+            $("#progressbar").html('')
+        });
 
+        function add_point() {
+            divCount++; // 增加 <div> 數量
+            newDiv = `
+            <div class="row g-2 my-2" style="border: 2px solid rgb(128, 236, 255);" id="point_${divCount}" name="point">
+                <div class="input-group">
+                    <span class="input-group-text" id="basic" title="ID">${divCount}</span>
 
+                    <label class="input-group-text" for="log${divCount}">
+                        <input class="form-check-input mt-0" type="checkbox"
+                            aria-label="Checkbox for following text input" id="log${divCount}" title="紀錄Logs">
+                    </label>
 
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="title${divCount}" placeholder="欄位名稱">
+                        <label for="title">logs的欄位名稱</label>
+                    </div>
+                    <span class="input-group-text" id="now_data${divCount}" title="及時顯示資料">123456</span>
+                </div>
 
+                <div class="input-group my-2">
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="address${divCount}" placeholder="點位" value="3000">
+                        <label for="title">點位</label>
+                    </div>
+
+                    <div class="form-floating">
+                        <select class="form-select" id="data_type${divCount}">
+                            <option value="1" selected>Int</option>
+                            <option value="2">uInt</option>
+                            <option value="3">Float</option>
+                        </select>
+                        <label for="data_type">資料型態</label>
+                    </div>
+
+                    <div class="form-floating">
+                        <select class="form-select" id="bit_num${divCount}">
+                            <option value="16">16 bit</option>
+                            <option value="32" selected>32 bit</option>
+                            <option value="64">64 bit</option>
+                        </select>
+                        <label for="bit_num">位元</label>
+                    </div>
+                    <button class="btn btn-outline-danger" type="button" onclick="del_point(this)"><i class="bi bi-trash-fill"></i></button>
+                </div>
+            </div>
+            `
+
+            $("#container").append(newDiv);
+        }
+        add_point()
+        function del_point(event) {
+            $(event).parent().parent().remove()
+            $("#slave").trigger("change");
+        }
+
+        $(".on_change").on("change", "input, select", function () {
+            point_data = {}
+            for (value of $("#container").children()){
+                num = $(value).find("#basic").text()
+
+                log = $(value).find(`#log${num}:checked`).length
+                title = $(value).find(`#title${num}`).val()
+                address = $(value).find(`#address${num}`).val()
+                data_type = $(value).find(`#data_type${num}`).val()
+                bit_num = $(value).find(`#bit_num${num}`).val()
+
+                point_data[num] = {'log': log, 'title': title, 'address': address, 'data_type': data_type, 'bit_num': bit_num}
+            }
+
+            point_type = $("#point_type").val()
+            slave = $("#slave").val()
+            data = {'point_type': point_type, 'slave': slave, 'point_data': point_data}
+            console.log(data)
+            socket.emit("modbus_point_data", data);
+        });
+        
 
     </script>
 </body>
 
 </html>
+
+
+
+
+
+
+
+
