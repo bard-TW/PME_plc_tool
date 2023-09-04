@@ -156,21 +156,20 @@
 
                     <div class="form-floating">
                         <select class="form-select" id="data_type${divCount}">
-                            <option value="1" selected>Int</option>
-                            <option value="2">uInt</option>
-                            <option value="3">Float</option>
+                            <option value="int16">int16</option>
+                            <option value="int32" selected>int32</option>
+                            <option value="int64">int64</option>
+                            <option value="uint16">uint16</option>
+                            <option value="uint32">uint32</option>
+                            <option value="uint64">uint64</option>
+                            <option value="float16">float16</option>
+                            <option value="float32">float32</option>
+                            <option value="float64">float64</option>
                         </select>
                         <label for="data_type">資料型態</label>
                     </div>
 
-                    <div class="form-floating">
-                        <select class="form-select" id="bit_num${divCount}">
-                            <option value="16">16 bit</option>
-                            <option value="32" selected>32 bit</option>
-                            <option value="64">64 bit</option>
-                        </select>
-                        <label for="bit_num">位元</label>
-                    </div>
+
                     <button class="btn btn-outline-danger" type="button" onclick="del_point(this)"><i class="bi bi-trash-fill"></i></button>
                 </div>
             </div>
@@ -193,9 +192,9 @@
                 title = $(value).find(`#title${num}`).val()
                 address = $(value).find(`#address${num}`).val()
                 data_type = $(value).find(`#data_type${num}`).val()
-                bit_num = $(value).find(`#bit_num${num}`).val()
+                console.log(data_type)
 
-                point_data[num] = {'log': log, 'title': title, 'address': address, 'data_type': data_type, 'bit_num': bit_num}
+                point_data[num] = {'log': log, 'title': title, 'address': address, 'data_type': data_type}
             }
 
             point_type = $("#point_type").val()
@@ -204,7 +203,11 @@
             console.log(data)
             socket.emit("modbus_point_data", data);
         });
-        
+
+        socket.on('modbus_value', function (data) {
+            $(`#now_data${data.key}`).html(data.data);
+        });
+
 
     </script>
 </body>

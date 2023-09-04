@@ -1,7 +1,11 @@
-from threading import Thread, Event
 import time
+from abc import ABC, abstractmethod
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from textwrap import dedent
+from threading import Event, Thread
 
-from engineio.async_drivers import threading # * 替代解決辦法 socketio使用threading 打包才能執行
+from engineio.async_drivers import \
+    threading  # * 替代解決辦法 socketio使用threading 打包才能執行
 from flask import Flask, jsonify, render_template, request
 from flask_socketio import SocketIO, emit
 from pymodbus.client import ModbusTcpClient
@@ -52,7 +56,8 @@ def handle_disconnect():
 
 @socketio.on('modbus_point_data')
 def handle_point_data(data):
-    modbus_connect_room[request.sid].point_data = data
+    if request.sid in modbus_connect_room:
+        modbus_connect_room[request.sid].point_data = data
 
 class ModbusThread(Thread):
     def __init__(self, ip, port, room):
@@ -61,7 +66,7 @@ class ModbusThread(Thread):
         self.port = port
         self.room = room
         self.exit_signal = Event()
-        self.point_data = {'point_type': '3', 'slave': '1', 'point_data': {'1': {'log': 0, 'title': '', 'address': '3000', 'data_type': '1', 'bit_num': '64'}}}
+        self.point_data = {}
 
     def run(self):
         client = ModbusTcpClient(self.ip, port=int(self.port))
@@ -75,23 +80,58 @@ class ModbusThread(Thread):
                 with app.app_context():
                     emit('connect_modbus_success', {'data': 'modbus 連線成功'}, namespace='/', broadcast=True, room=self.room)
 
-                point_type = self.point_data.get('point_type', '3')
-                slave = self.point_data.get('slave', '1')
-                if point_type == '1':
-                    read_funt = client.read_coils
-                elif point_type == '2':
-                    read_funt = client.read_discrete_inputs
-                elif point_type == '4':
-                    read_funt = client.read_input_registers
-                else:
-                    read_funt = client.read_holding_registers
-
-
                 while not self.exit_signal.is_set():
+                    point_type = self.point_data.get('point_type', '3')
+                    slave = int(self.point_data.get('slave', '1'))
+                    if point_type == '1':
+                        read_funt = client.read_coils
+                    elif point_type == '2':
+                        read_funt = client.read_discrete_inputs
+                    elif point_type == '4':
+                        read_funt = client.read_input_registers
+                    else:
+                        read_funt = client.read_holding_registers
+
                     point_data = self.point_data.get('point_data', {})
                     if len(point_data):
+                        for key, value in point_data.items():
+                            # print(key, value)
+                            log = value.get('log', 0)
+                            title = value.get('title', '')
+                            address = int(value.get('address', 3000))
+                            data_type = value.get('data_type', 'int32')
+                            if data_type[-2:] == '16':
+                                count = 1
+                            elif data_type[-2:] == '32':
+                                count = 2
+                            elif data_type[-2:] == '64':
+                                count = 4
 
-                        result = read_funt(1, count=10, slave=int(slave))
+                            result = read_funt(address, count=count, slave=slave)
+                            decoder = BinaryPayloadDecoder.fromRegisters(result.registers, byteorder=Endian.Big, wordorder=Endian.Big)
+                            if data_type == 'int16':
+                                active_power = decoder.decode_16bit_int()
+                            elif data_type == 'int32':
+                                active_power = decoder.decode_32bit_int()
+                            elif data_type == 'int64':
+                                active_power = decoder.decode_64bit_int()
+                            elif data_type == 'uint16':
+                                active_power = decoder.decode_16bit_uint()
+                            elif data_type == 'uint32':
+                                active_power = decoder.decode_32bit_uint()
+                            elif data_type == 'uint64':
+                                active_power = decoder.decode_64bit_uint()
+                            elif data_type == 'float16':
+                                active_power = '{:f}'.format(decoder.decode_16bit_float())
+                            elif data_type == 'float32':
+                                active_power = '{:f}'.format(decoder.decode_32bit_float())
+                            elif data_type == 'float64':
+                                active_power = '{:f}'.format(decoder.decode_64bit_float())
+
+                            with app.app_context():
+                                emit('modbus_value', {'key': key, 'data': active_power}, namespace='/', broadcast=True, room=self.room)
+
+
                         # TODO 目前進度
 
 
@@ -101,7 +141,7 @@ class ModbusThread(Thread):
         finally:
             # print('斷開連線', self.room)
             del modbus_connect_room[self.room]
-            print("剩餘連線數:", len(modbus_connect_room))
+            print("剩餘modbus連線數:", len(modbus_connect_room))
             
 
 

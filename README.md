@@ -76,4 +76,6 @@ python .\atypical.py  -f 'yourdata.csv' -p '.\your\path'
 pyinstaller -F .\make_plc.py
 pyinstaller -F .\atypical.py
 pyinstaller -F .\modbus.py
+
+pyinstaller -F modbus_web.py --add-data 'templates;templates' --name modbus_web
 ```
