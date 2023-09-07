@@ -8,7 +8,7 @@ from engineio.async_drivers import \
     threading  # * 替代解決辦法 socketio使用threading 打包才能執行
 from flask import Flask, jsonify, render_template, request
 from flask_socketio import SocketIO, emit
-from pymodbus.client import ModbusTcpClient
+from pymodbus.client import ModbusTcpClient, ModbusUdpClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder
 
@@ -69,8 +69,14 @@ class ModbusThread(Thread):
         self.point_data = {}
 
     def run(self):
-        client = ModbusTcpClient(self.ip, port=int(self.port))
+        client = ModbusTcpClient(self.ip, port=int(self.port), timeout=3)
+        # client = ModbusUdpClient(self.ip, port=int(self.port))
+
+        
         connection = client.connect()
+        # for _ in range(3):
+        #     if not connection:
+        #         connection = client.connect()
 
         try:
             if not connection:
