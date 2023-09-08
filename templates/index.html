@@ -1,5 +1,5 @@
 <!doctype html>
-<html data-bs-theme="dark"> 
+<html> 
     <!-- data-bs-theme="dark" -->
 <head>
     <title>Modbus Scan</title>
@@ -20,8 +20,6 @@
 </head>
 
 <body>
-
-
     <div class="container-fluid  text-center">
         <div class="row">
             <div class="col-lg-5 col-xl-4">
@@ -29,47 +27,48 @@
 
                 <div class="row g-2 my-2">
                     <div class="col d-grid gap-2">
-                        <button type="button" class="btn btn-outline-success" >開啟</button>
+                        <button type="button" class="btn btn-outline-success" disabled>讀取點位資料</button>
                     </div>
                     <div class="col d-grid gap-2">
-                        <button type="button" class="btn btn-outline-primary" >儲存</button>
+                        <button type="button" class="btn btn-outline-primary" disabled>儲存點位資料</button>
                     </div>
                 </div>
-                <div class="input-group">
-                    <div class="form-floating">
-                        <input type="text" class="form-control" id="ip" placeholder="192.168.0.1" value="">
-                        <label for="floatingInputGrid">IP</label>
+                    <div class="input-group">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="ip" placeholder="192.168.0.1" value="127.0.0.1" required>
+                            <label for="floatingInputGrid">IP</label>
+                        </div>
+                        <div class="form-floating">
+                            <input type="number" class="form-control" id="port" placeholder="502" value="5020" required>
+                            <label for="floatingInputGrid">Port</label>
+                        </div>
+                        <button type="button" class="btn btn-outline-danger" id="disconnect_modbus_btu" onclick="disconnect_modbus()" style="display: none;">中斷</button>
+                        <button type="button" class="btn btn-outline-primary" id="connect_modbus_btu"  onclick="connect_modbus()">連線</button>
                     </div>
-                    <div class="form-floating">
-                        <input type="number" class="form-control" id="port" placeholder="502" value="502">
-                        <label for="floatingInputGrid">Port</label>
-                    </div>
-                    <button type="button" class="btn btn-outline-danger" id="disconnect_modbus_btu" onclick="disconnect_modbus()" style="display: none;">中斷</button>
-                    <button type="button" class="btn btn-outline-primary" id="connect_modbus_btu"  onclick="connect_modbus()">連線</button>
-                </div>
 
                 <div id="progressbar" class="g-2 my-2"></div><!-- 進度條 -->
 
-                <div class="input-group">
+                <div class="input-group" id="basic_setting">
                     <div class="form-floating">
                         <input type="number" class="form-control " id="slave" placeholder="1" value="1">
                         <label for="floatingInputGrid">Slave</label>
                     </div>
 
                     <div class="form-floating">
-                        <select class="form-select " id="point_type" aria-label="">
+                        <select class="form-select " id="point_type" aria-label="" disabled>
                             <option value="1">01: COIL STATUS</option>
                             <option value="2">02: INPUT STATUS</option>
                             <option selected value="3">03: HOLDING REGISTER</option>
                             <option value="4">04: INPUT REGISTER</option>
                         </select>
-                        <label for="point_type">Modbus Point Type</label>
+                        <label for="point_type"> 型態(其他有問題)</label>
+                        <!-- Modbus Point Type -->
+                    </div>
+                    <div class="form-floating">
+                        <input type="number" class="form-control " id="time_sleep" placeholder="1" value="1">
+                        <label for="floatingInputGrid">延遲秒數</label>
                     </div>
                 </div>
-
-                <div id="container" class="on_change">
-                </div>
-
 
                 <div class="row g-2 my-2">
                     <div class="col">
@@ -112,6 +111,8 @@
     <script type="text/javascript">
         var socket = io.connect();
         var divCount = 1;
+        var modbus_setting_data = [{"id": 1, "is_log": false, "title": "aa", "point": 3002, "data_type": "int32", "data_sort": 1, "now_value": ""}]
+
 
         var language = {
             "processing": "處理中...",
@@ -159,7 +160,6 @@
         },
         ]
 
-
         var columnDefs = [{ 
             "targets": 1,
             'className': 'text-center'
@@ -168,38 +168,34 @@
             'className': 'text-center'
             },{
             "targets": 4,
-            'className': 'text-center',
-            "render": function (data, type, row) {
-                return data.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-                }
+            'className': 'text-start',
         },]
-
 
         function open_row(d) {
             return (`
-            <div class="row g-2" id="point_${d.id}" name="point">
+            <div class="row g-2" name="point">
                 <div class="input-group">
-                    <span class="input-group-text" id="basic" title="ID">${d.id}</span>
+                    <span class="input-group-text" name="id" title="ID">${d.id}</span>
 
-                    <label class="input-group-text" for="log${d.id}">
+                    <label class="input-group-text" name="log" for="log${d.id}">
                         <input class="form-check-input mt-0" type="checkbox"
-                            aria-label="Checkbox for following text input" id="log${d.id}" title="紀錄Logs" ${d.is_log == true ? "checked" :""}>
+                            aria-label="Checkbox for following text input" name="log" title="紀錄Logs" ${d.is_log == true ? "checked" :""}>
                     </label>
 
                     <div class="form-floating">
-                        <input type="text" class="form-control" id="title${d.id}" placeholder="欄位名稱" value="${d.title}">
+                        <input type="text" class="form-control" id="title${d.id}" name="title" placeholder="欄位名稱" value="${d.title}">
                         <label for="title">logs的欄位名稱</label>
                     </div>
                 </div>
 
                 <div class="input-group">
                     <div class="form-floating">
-                        <input type="number" class="form-control" id="address${d.id}" placeholder="點位" value="${d.point}">
+                        <input type="number" class="form-control" name="address" placeholder="點位" value="${d.point}">
                         <label for="title">點位</label>
                     </div>
 
                     <div class="form-floating">
-                        <select class="form-select" id="data_type${d.id}">
+                        <select class="form-select" name="data_type">
                             <option value="int16" ${d.data_type == "int16" ? "selected" :""}>int16</option>
                             <option value="int32" ${d.data_type == "int32" ? "selected" :""}>int32</option>
                             <option value="int64" ${d.data_type == "int64" ? "selected" :""}>int64</option>
@@ -227,40 +223,23 @@
             );
         }
 
+
         var modbus_setting_table = $('#modbus_setting_table').DataTable({
                     'language': language,
-                    'data': [{"id": 1, "is_log": false, "title": "aa", "point": 3002, "data_type": "int32", "data_sort": 2, "now_value": ""}],
+                    'data': modbus_setting_data,
                     'columns': columns,
                     'columnDefs': columnDefs,
                     "order": [[2, "asc"]],
                     // "dom": 'Bfrtip',
             });
 
-        $('#modbus_setting_table tbody').on('click', 'td.dt-text', function () {
-            if ($(this).parent().hasClass('selected')) {
-                $(this).parent().removeClass('selected');
-            } else {
-                modbus_setting_table.$('tr.selected').removeClass('selected');
-                $(this).parent().addClass('selected');
-            }
-
-            // $(this).parent().toggleClass('selected');
-
-            // var tr = $(this).closest('tr');
-            // var row = modbus_setting_table.row(tr);
-            // console.log(row)
-        });
-
         function add_point() {
             divCount ++
             // 新增
-            modbus_setting_table.row.add({"id": divCount, "is_log": false, "title": "", "point": 0, "data_type": "int32", "data_sort": 1, "now_value": ""}).draw();
-
-            // 修改
-            // modbus_setting_table.cell(bb[0], 1).data("123456").draw()
-
-            // 刪除
-            // modbus_setting_table.row(bb[0]).remove().draw();
+            copiedObj = {"id": divCount, "is_log": false, "title": "", "point": 0, "data_type": "int32", "data_sort": 1, "now_value": ""}
+            modbus_setting_data.push(copiedObj)
+            modbus_setting_table.row.add(copiedObj).draw();
+            socket.emit("update_point_data", modbus_setting_data);
         }
 
         function copy_point() {
@@ -277,7 +256,9 @@
                 divCount ++
                 copiedObj.id = divCount
                 // 複製
+                modbus_setting_data.push(copiedObj)
                 modbus_setting_table.row.add(copiedObj).draw();
+                socket.emit("update_point_data", modbus_setting_data);
             }
         }
 
@@ -294,8 +275,18 @@
             if (data_row.length >= 1){
                 modbus_setting_table.row(data_row[0]).remove().draw();
             }
+            modbus_setting_data.splice(data_row[0], 1)
+            socket.emit("del_point_data", data_row.data());
         }
 
+        $('#modbus_setting_table tbody').on('click', 'td.dt-text', function () {
+            if ($(this).parent().hasClass('selected')) {
+                $(this).parent().removeClass('selected');
+            } else {
+                modbus_setting_table.$('tr.selected').removeClass('selected');
+                $(this).parent().addClass('selected');
+            }
+        });
 
         $('#modbus_setting_table tbody').on('click', 'td.dt-control', function () {
             var tr = $(this).closest('tr');
@@ -330,7 +321,6 @@
                 <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 50%">連線中</div>
             </div>
             `)
-
         }
 
         function disconnect_modbus() {
@@ -362,7 +352,42 @@
 
             $("#connect_modbus_btu").hide()
             $("#disconnect_modbus_btu").show()
+
+            $("#slave").change()
+            socket.emit("update_point_data", modbus_setting_data);
         });
+
+        socket.on('modbus_value', function (data) {
+            // 連線成功
+            for (const [index, value] of modbus_setting_data.entries()){
+                if (value.id in data){
+                    modbus_setting_table.cell(index, 4).data(data[value.id].now_value)
+                }
+            }
+        });
+
+        $("#modbus_setting_table").on("change", "input, select", function () {
+            tr = $(this).closest('tr').prev();
+            var row = modbus_setting_table.row(tr);
+
+            name = $(this).attr("name")
+            if(name === "title"){
+                modbus_setting_table.cell(row, 1).data($(this).val())
+            } else if (name === "address"){
+                modbus_setting_table.cell(row, 2).data($(this).val())
+            } else if (name === "data_type"){
+                modbus_setting_table.cell(row, 3).data($(this).val())
+            }
+            socket.emit("update_point_data", [row.data()]);
+        });
+
+        $("#basic_setting").on("change", "input, select", function () {
+            slave = $("#slave").val()
+            point_type = $("#point_type").val()
+            time_sleep = $("#time_sleep").val()
+            socket.emit("update_basic_data", {'slave': slave, 'point_type': point_type, 'time_sleep': time_sleep});
+        });
+
 
     </script>
 </body>
