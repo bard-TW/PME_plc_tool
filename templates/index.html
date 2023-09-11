@@ -34,7 +34,7 @@
                         <button type="button" class="btn btn-outline-primary" onclick="export_point_data()">儲存點位資料</button>
                     </div>
                 </div>
-                    <div class="input-group">
+                    <div class="input-group g-2 my-2">
                         <div class="form-floating">
                             <input type="text" class="form-control" id="ip" placeholder="192.168.0.1" value="127.0.0.1" required>
                             <label for="floatingInputGrid">IP</label>
@@ -46,8 +46,6 @@
                         <button type="button" class="btn btn-outline-danger" id="disconnect_modbus_btu" onclick="disconnect_modbus()" style="display: none;">中斷</button>
                         <button type="button" class="btn btn-outline-primary" id="connect_modbus_btu"  onclick="connect_modbus()">連線</button>
                     </div>
-
-                <div id="progressbar" class="g-2 my-2"></div><!-- 進度條 -->
 
                 <div class="input-group" id="basic_setting">
                     <div class="form-floating">
@@ -71,6 +69,10 @@
                     </div>
                 </div>
 
+                <div class="progress g-2 my-2" role="progressbar" aria-label="Animated striped example" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width: 0%" id="progressbar">連線中</div>
+                </div>
+
                 <div class="row g-2 my-2">
                     <div class="col">
                         <label>點位動作：</label>
@@ -85,7 +87,6 @@
                         <button type="button" class="btn btn-outline-danger" onclick="del_point()">刪除</button>
                     </div>
                 </div>
-                
 
                 <div class="g-2 my-2">
                     <table id="modbus_setting_table" class="display compact table-striped" style="width:100%">
@@ -240,7 +241,7 @@
             copiedObj = {"id": divCount, "is_log": false, "title": "", "point": 0, "data_type": "int32", "data_sort": 1, "now_value": ""}
             modbus_setting_data.push(copiedObj)
             modbus_setting_table.row.add(copiedObj).draw();
-            socket.emit("update_point_data", modbus_setting_data);
+            socket.emit("update_point_data", modbus_setting_data, '');
         }
 
         function copy_point() {
@@ -259,7 +260,7 @@
                 // 複製
                 modbus_setting_data.push(copiedObj)
                 modbus_setting_table.row.add(copiedObj).draw();
-                socket.emit("update_point_data", modbus_setting_data);
+                socket.emit("update_point_data", modbus_setting_data, '');
             }
         }
 
@@ -318,11 +319,22 @@
             $("#ip").prop("disabled", true);
             $("#port").prop("disabled", true);
 
-            $("#progressbar").html(`<div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 50%">連線中</div>
-            </div>
-            `)
+            $("#progressbar").css("width", "25%");
+            $("#progressbar").text("嘗試連線");
+
         }
+
+
+        socket.on('connect_modbus', function (data) {
+            // 連線中
+            console.log(data)
+            $("#progressbar").css("width", data.progress);
+            $("#progressbar").text(data.msg);
+
+
+        });
+
+
 
         function disconnect_modbus() {
             // 中斷連線
@@ -330,6 +342,9 @@
             $("#connect_modbus_btu").prop("disabled", false);
             $("#ip").prop("disabled", false);
             $("#port").prop("disabled", false);
+
+            $("#progressbar").css("width", "0%");
+            $("#progressbar").text("連線中斷");
 
             $("#disconnect_modbus_btu").hide()
             $("#connect_modbus_btu").show()
@@ -339,7 +354,10 @@
             // 無法連線
             alert(data.data)
             $("#connect_modbus_btu").prop("disabled", false);
-            $("#progressbar").html('')
+
+            $("#progressbar").css("width", "0%");
+            $("#progressbar").text("連線失敗");
+
             $("#ip").prop("disabled", false);
             $("#port").prop("disabled", false);
 
@@ -349,13 +367,14 @@
 
         socket.on('connect_modbus_success', function (data) {
             // 連線成功
-            $("#progressbar").html('')
+            $("#progressbar").css("width", "100%");
+            $("#progressbar").text("連線成功");
 
             $("#connect_modbus_btu").hide()
             $("#disconnect_modbus_btu").show()
 
             $("#slave").change()
-            socket.emit("update_point_data", modbus_setting_data);
+            socket.emit("update_point_data", modbus_setting_data, '');
         });
 
         socket.on('modbus_value', function (data) {
@@ -379,7 +398,7 @@
             } else if (name === "data_type"){
                 modbus_setting_table.cell(row, 3).data($(this).val())
             }
-            socket.emit("update_point_data", [row.data()]);
+            socket.emit("update_point_data", [row.data()], '');
         });
 
         $("#basic_setting").on("change", "input, select", function () {
@@ -405,6 +424,8 @@
             URL.revokeObjectURL(a.href);
         }
 
+
+        // 匯入功能
         const fileInput = document.getElementById('fileInput');
         fileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -426,6 +447,7 @@
                     modbus_setting_data.push(value)
                     modbus_setting_table.row.add(value).draw();
                 }
+                socket.emit("update_point_data", modbus_setting_data, 'ALL');
 
             } catch (error) {
                 console.error('无法解析 JSON 数据:', error);

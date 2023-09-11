@@ -1,3 +1,4 @@
+# import subprocess
 import time
 from abc import ABC, abstractmethod
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -8,6 +9,7 @@ from engineio.async_drivers import \
     threading  # * 替代解決辦法 socketio使用threading 打包才能執行
 from flask import Flask, jsonify, render_template, request
 from flask_socketio import SocketIO, emit
+from ping3 import ping, verbose_ping
 from pymodbus.client import ModbusTcpClient, ModbusUdpClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder
@@ -58,10 +60,12 @@ def handle_disconnect():
         modbus_connect_room[request.sid].exit_signal.set()
 
 @socketio.on('update_point_data')
-def update_point_data(datas):
+def update_point_data(datas, mode=''):
     if request.sid in modbus_connect_room:
+        if mode == 'all':
+            modbus_connect_room[request.sid].point_data = datas
+            return
         for data in datas:
-            print(data)
             modbus_connect_room[request.sid].point_data[data['id']] = data
 
 @socketio.on('del_point_data')
@@ -97,11 +101,28 @@ class ModbusThread(Thread):
         client = ModbusTcpClient(self.ip, port=int(self.port), timeout=3)
         # client = ModbusUdpClient(self.ip, port=int(self.port))
         connection = client.connect()
+        error_msg = ''
+        if not connection:
+            error_msg += 'step 1. modbus 連線失敗\n'
+            with app.app_context():
+                emit('connect_modbus', {'progress': "50%",  "msg": "ping測試"}, namespace='/', broadcast=True, room=self.room)
+            
+            time.sleep(1)
+            is_ping = ping_ip(self.ip)
+            if is_ping == True:
+                error_msg += 'step 2. ping 成功\n'
+            else:
+                error_msg += 'step 2. ping 失敗\n'
+
+            with app.app_context():
+                emit('connect_modbus', {'progress': "75%",  "msg": "嘗試連線"}, namespace='/', broadcast=True, room=self.room)
+            connection = client.connect()
 
         try:
             if not connection:
                 with app.app_context():
-                    emit('connect_modbus_error', {'data': 'modbus 無法建立連線'}, namespace='/', broadcast=True, room=self.room)
+                    error_msg += 'step 3. modbus 第2次連線失敗'
+                    emit('connect_modbus_error', {'data': error_msg}, namespace='/', broadcast=True, room=self.room)
             else:
                 with app.app_context():
                     emit('connect_modbus_success', {'data': 'modbus 連線成功'}, namespace='/', broadcast=True, room=self.room)
@@ -173,6 +194,12 @@ class ModbusThread(Thread):
             del modbus_connect_room[self.room]
             print("剩餘modbus連線數:", len(modbus_connect_room))
 
+def ping_ip(ip_address):
+    response_time = ping(ip_address)
+    if response_time is not None:
+        return True
+    else:
+        return False
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
