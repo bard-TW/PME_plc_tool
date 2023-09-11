@@ -123,7 +123,7 @@ class ModbusThread(Thread):
                             title = value.get('title', '')
                             point = int(value.get('point', 3000))
                             data_type = value.get('data_type', 'int32')
-                            
+
                             if data_type[-2:] == '16':
                                 count = 1
                             elif data_type[-2:] == '32':
@@ -160,10 +160,8 @@ class ModbusThread(Thread):
                                 active_power = '{:f}'.format(decoder.decode_64bit_float())
                             self.point_data[key]['now_value'] = active_power
 
-                        # print(self.point_data)
                         with app.app_context():
                             emit('modbus_value', self.point_data, namespace='/', broadcast=True, room=self.room)
-                        # TODO 目前進度
 
                     for x in range(self.time_sleep, 0, -1):
                         if x > self.time_sleep:
@@ -174,8 +172,6 @@ class ModbusThread(Thread):
             # print('斷開連線', self.room)
             del modbus_connect_room[self.room]
             print("剩餘modbus連線數:", len(modbus_connect_room))
-            
-
 
 
 if __name__ == '__main__':

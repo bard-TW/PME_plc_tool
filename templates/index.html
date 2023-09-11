@@ -24,13 +24,14 @@
         <div class="row">
             <div class="col-lg-5 col-xl-4">
                 <h3>Modbus 設定</h3>
-
+                
                 <div class="row g-2 my-2">
                     <div class="col d-grid gap-2">
-                        <button type="button" class="btn btn-outline-success" disabled>讀取點位資料</button>
+                        <input type="file" class="btn btn-outline-success" id="fileInput" title="讀取點位資料" accept=".json">
+                        <!-- <button type="button" class="btn btn-outline-success">讀取點位資料</button> -->
                     </div>
                     <div class="col d-grid gap-2">
-                        <button type="button" class="btn btn-outline-primary" disabled>儲存點位資料</button>
+                        <button type="button" class="btn btn-outline-primary" onclick="export_point_data()">儲存點位資料</button>
                     </div>
                 </div>
                     <div class="input-group">
@@ -386,6 +387,52 @@
             point_type = $("#point_type").val()
             time_sleep = $("#time_sleep").val()
             socket.emit("update_basic_data", {'slave': slave, 'point_type': point_type, 'time_sleep': time_sleep});
+        });
+
+        function export_point_data() {
+            export_data = []
+            for (const [index, value] of modbus_setting_data.entries()){
+                copiedObj = Object.assign({}, value);
+                delete copiedObj.id
+                export_data.push(copiedObj)
+            }
+            var jsonString = JSON.stringify(export_data);
+            var blob = new Blob([jsonString], { type: "application/json" });
+            var a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "data.json";
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        const fileInput = document.getElementById('fileInput');
+        fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+            const fileContent = event.target.result;
+            
+            try {
+                data_length = modbus_setting_data.length
+                for (var i = 0; i < data_length; i++) {
+                    modbus_setting_table.row(0).remove().draw();
+                    modbus_setting_data.splice(0, 1)
+                }
+                const jsonData = JSON.parse(fileContent);
+                for (const [index, value] of jsonData.entries()){
+                    divCount = index + 1
+                    value.id = divCount
+                    modbus_setting_data.push(value)
+                    modbus_setting_table.row.add(value).draw();
+                }
+
+            } catch (error) {
+                console.error('无法解析 JSON 数据:', error);
+            }
+            };
+            reader.readAsText(file);
+        }
         });
 
 
