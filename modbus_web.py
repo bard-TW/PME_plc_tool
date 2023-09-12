@@ -46,7 +46,6 @@ def connect_modbus(ip, port):
     modbusThread = ModbusThread(ip, port, request.sid)
     modbusThread.start()
     modbus_connect_room[request.sid] = modbusThread
-    print(modbus_connect_room)
     # emit('status_response', {'data': data}, room=request.sid)
 
 @socketio.on('disconnect_modbus')
@@ -61,12 +60,31 @@ def handle_disconnect():
 
 @socketio.on('update_point_data')
 def update_point_data(datas, mode=''):
-    if request.sid in modbus_connect_room:
-        if mode == 'all':
-            modbus_connect_room[request.sid].point_data = datas
-            return
-        for data in datas:
-            modbus_connect_room[request.sid].point_data[data['id']] = data
+    if request.sid not in modbus_connect_room:
+        return
+
+    if mode == 'all':
+        modbus_connect_room[request.sid].point_data = {}
+    for data in datas:
+        modbus_connect_room[request.sid].point_data[data['id']] = data
+
+    point_list = []
+    for key, value in modbus_connect_room[request.sid].point_data.items():
+        data_type = value.get('data_type', 'int32')
+        point = int(value.get('point', 3000))
+        point_list.append(point)
+        if data_type[-2:] == '32':
+            point_list.append(point+2)
+        elif data_type[-2:] == '64':
+            point_list.append(point+4)
+
+    point_list.sort()
+    count = point_list[-1] - point_list[0]
+    count = 1 if count == 0 else count
+    print(point_list)
+    print(point_list[0], count)
+    modbus_connect_room[request.sid].start_point = point_list[0]
+    modbus_connect_room[request.sid].count_point = count
 
 @socketio.on('del_point_data')
 def del_point_data(data):
@@ -96,10 +114,10 @@ class ModbusThread(Thread):
         self.point_type = '3'
         self.slave = 1
         self.point_data = {}
+        self.start_point = 0
+        self.count_point = 0
 
-    def run(self):
-        client = ModbusTcpClient(self.ip, port=int(self.port), timeout=3)
-        # client = ModbusUdpClient(self.ip, port=int(self.port))
+    def test_connection(self, client):
         connection = client.connect()
         error_msg = ''
         if not connection:
@@ -118,76 +136,89 @@ class ModbusThread(Thread):
                 emit('connect_modbus', {'progress': "75%",  "msg": "嘗試連線"}, namespace='/', broadcast=True, room=self.room)
             connection = client.connect()
 
+        if not connection:
+            with app.app_context():
+                error_msg += 'step 3. modbus 第2次連線失敗'
+                emit('connect_modbus_error', {'data': error_msg}, namespace='/', broadcast=True, room=self.room)
+            return False
+        return True
+
+
+    def run(self):
+        client = ModbusTcpClient(self.ip, port=int(self.port), timeout=3)
+        # client = ModbusUdpClient(self.ip, port=int(self.port))
         try:
-            if not connection:
-                with app.app_context():
-                    error_msg += 'step 3. modbus 第2次連線失敗'
-                    emit('connect_modbus_error', {'data': error_msg}, namespace='/', broadcast=True, room=self.room)
-            else:
-                with app.app_context():
-                    emit('connect_modbus_success', {'data': 'modbus 連線成功'}, namespace='/', broadcast=True, room=self.room)
+            if self.test_connection(client) == False:
+                return
 
-                while not self.exit_signal.is_set():
-                    if self.point_type == '1':
-                        read_funt = client.read_coils
-                    elif self.point_type == '2':
-                        read_funt = client.read_discrete_inputs
-                    elif self.point_type == '4':
-                        read_funt = client.read_input_registers
-                    else:
-                        read_funt = client.read_holding_registers
+            with app.app_context():
+                emit('connect_modbus_success', {'data': 'modbus 連線成功'}, namespace='/', broadcast=True, room=self.room)
 
+            while not self.exit_signal.is_set():
+                for x in range(self.time_sleep, 0, -1):
+                    time.sleep(1)
+                    if x > self.time_sleep:
+                        break
 
-                    if len(self.point_data):
-                        for key, value in self.point_data.items():
-                            log = value.get('log', 0)
-                            title = value.get('title', '')
-                            point = int(value.get('point', 3000))
-                            data_type = value.get('data_type', 'int32')
+                if self.point_type == '1':
+                    read_funt = client.read_coils
+                elif self.point_type == '2':
+                    read_funt = client.read_discrete_inputs
+                elif self.point_type == '4':
+                    read_funt = client.read_input_registers
+                else:
+                    read_funt = client.read_holding_registers
 
-                            if data_type[-2:] == '16':
-                                count = 1
-                            elif data_type[-2:] == '32':
-                                count = 2
-                            elif data_type[-2:] == '64':
-                                count = 4
+                if len(self.point_data):
+                    result = read_funt(self.start_point, count=self.count_point, slave=self.slave)
+                    result_registers = result.registers
 
-                            result = read_funt(point, count=count, slave=self.slave)
+                    for key, value in self.point_data.items():
+                        # log = value.get('log', 0)
+                        # title = value.get('title', '')
+                        point = int(value.get('point', 3000))
+                        data_type = value.get('data_type', 'int32')
 
-                            data_sort = value.get('data_sort', 1)
-                            if data_sort == 2:
-                                registers = result.registers[::-1]
-                            else:
-                                registers = result.registers
+                        start_list_point = point - self.start_point
 
-                            decoder = BinaryPayloadDecoder.fromRegisters(registers, byteorder=Endian.Big, wordorder=Endian.Big)
-                            if data_type == 'int16':
-                                active_power = decoder.decode_16bit_int()
-                            elif data_type == 'int32':
-                                active_power = decoder.decode_32bit_int()
-                            elif data_type == 'int64':
-                                active_power = decoder.decode_64bit_int()
-                            elif data_type == 'uint16':
-                                active_power = decoder.decode_16bit_uint()
-                            elif data_type == 'uint32':
-                                active_power = decoder.decode_32bit_uint()
-                            elif data_type == 'uint64':
-                                active_power = decoder.decode_64bit_uint()
-                            elif data_type == 'float16':
-                                active_power = '{:f}'.format(decoder.decode_16bit_float())
-                            elif data_type == 'float32':
-                                active_power = '{:f}'.format(decoder.decode_32bit_float())
-                            elif data_type == 'float64':
-                                active_power = '{:f}'.format(decoder.decode_64bit_float())
-                            self.point_data[key]['now_value'] = active_power
+                        if data_type[-2:] == '16':
+                            count = 1
+                        elif data_type[-2:] == '32':
+                            count = 2
+                        elif data_type[-2:] == '64':
+                            count = 4
 
-                        with app.app_context():
-                            emit('modbus_value', self.point_data, namespace='/', broadcast=True, room=self.room)
+                        parser_list = result_registers[start_list_point: start_list_point+count]
 
-                    for x in range(self.time_sleep, 0, -1):
-                        if x > self.time_sleep:
-                            break
-                        time.sleep(1)
+                        data_sort = value.get('data_sort', 1)
+                        if data_sort == 2:
+                            parser_list = parser_list[::-1]
+
+                        decoder = BinaryPayloadDecoder.fromRegisters(parser_list, byteorder=Endian.Big, wordorder=Endian.Big)
+                        if parser_list == []:
+                            active_power = ''
+                        elif data_type == 'int16':
+                            active_power = decoder.decode_16bit_int()
+                        elif data_type == 'int32':
+                            active_power = decoder.decode_32bit_int()
+                        elif data_type == 'int64':
+                            active_power = decoder.decode_64bit_int()
+                        elif data_type == 'uint16':
+                            active_power = decoder.decode_16bit_uint()
+                        elif data_type == 'uint32':
+                            active_power = decoder.decode_32bit_uint()
+                        elif data_type == 'uint64':
+                            active_power = decoder.decode_64bit_uint()
+                        elif data_type == 'float16':
+                            active_power = '{:f}'.format(decoder.decode_16bit_float())
+                        elif data_type == 'float32':
+                            active_power = '{:f}'.format(decoder.decode_32bit_float())
+                        elif data_type == 'float64':
+                            active_power = '{:f}'.format(decoder.decode_64bit_float())
+                        self.point_data[key]['now_value'] = active_power
+
+                    with app.app_context():
+                        emit('modbus_value', self.point_data, namespace='/', broadcast=True, room=self.room)
 
         finally:
             # print('斷開連線', self.room)
