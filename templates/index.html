@@ -20,7 +20,7 @@
 </head>
 
 <body>
-    <div class="container-fluid  text-center">
+    <div class="container-fluid text-center">
         <div class="row">
             <div class="col-lg-5 col-xl-4">
                 <h3>Modbus 設定</h3>
@@ -34,18 +34,18 @@
                         <button type="button" class="btn btn-outline-primary" onclick="export_point_data()">儲存點位資料</button>
                     </div>
                 </div>
-                    <div class="input-group g-2 my-2">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="ip" placeholder="192.168.0.1" value="127.0.0.1" required>
-                            <label for="floatingInputGrid">IP</label>
-                        </div>
-                        <div class="form-floating">
-                            <input type="number" class="form-control" id="port" placeholder="502" value="5020" required>
-                            <label for="floatingInputGrid">Port</label>
-                        </div>
-                        <button type="button" class="btn btn-outline-danger" id="disconnect_modbus_btu" onclick="disconnect_modbus()" style="display: none;">中斷</button>
-                        <button type="button" class="btn btn-outline-primary" id="connect_modbus_btu"  onclick="connect_modbus()">連線</button>
+                <div class="input-group g-2 my-2">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="ip" placeholder="192.168.0.1" value="127.0.0.1" required>
+                        <label for="floatingInputGrid">IP</label>
                     </div>
+                    <div class="form-floating">
+                        <input type="number" class="form-control" id="port" placeholder="502" value="5020" required>
+                        <label for="floatingInputGrid">Port</label>
+                    </div>
+                    <button type="button" class="btn btn-outline-danger" id="disconnect_modbus_btu" onclick="disconnect_modbus()" style="display: none;">中斷</button>
+                    <button type="button" class="btn btn-outline-primary" id="connect_modbus_btu"  onclick="connect_modbus()">連線</button>
+                </div>
 
                 <div class="input-group" id="basic_setting">
                     <div class="form-floating">
@@ -75,7 +75,7 @@
 
                 <div class="row g-2 my-2">
                     <div class="col">
-                        <label>點位動作：</label>
+                        <label class="align-middle">點位動作：</label>
                     </div>
                     <div class="col d-grid gap-2">
                         <button type="button" class="btn btn-outline-success" onclick="add_point()">新增</button>
@@ -103,8 +103,29 @@
                 </div>
 
             </div>
+
             <div class="col-lg-7 col-xl-8">
                 <h3>Logs 表格</h3>
+
+                <div class="row g-2 my-2">
+                    <div class="col d-grid gap-2">
+                        <button type="button" class="btn btn-outline-success" onclick="reset_history_checkbox()">初始化\重置表格</button>
+                    </div>
+                    <div class="col d-grid gap-2">
+                        <button type="button" class="btn btn-outline-danger" disabled>清空</button>
+                    </div>
+                </div>
+
+                <div id="show_switch" class="row user-select-none"></div>
+
+                <br>
+                <table id="history_table" class="display compact table-striped" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>時間</th>
+                        </tr>
+                    </thead>
+                </table>
             </div>
         </div>
     </div>
@@ -114,8 +135,6 @@
         var socket = io.connect();
         var divCount = 1;
         var modbus_setting_data = [{"id": 1, "is_log": false, "title": "aa", "point": 3002, "data_type": "int32", "data_sort": 1, "now_value": ""}]
-
-
         var language = {
             "processing": "處理中...",
             "loadingRecords": "載入中...",
@@ -213,7 +232,7 @@
 
 
                     <div class="form-floating">
-                        <select class="form-select" id="data_type${d.id}">
+                        <select class="form-select" name="data_sort">
                             <option value=1 ${d.data_sort == 1 ? "selected" :""}>低到高</option>
                             <option value=2 ${d.data_sort == 2 ? "selected" :""}>高到低</option>
                         </select>
@@ -225,7 +244,6 @@
             );
         }
 
-
         var modbus_setting_table = $('#modbus_setting_table').DataTable({
                     'language': language,
                     'data': modbus_setting_data,
@@ -233,12 +251,19 @@
                     'columnDefs': columnDefs,
                     "order": [[2, "asc"]],
                     // "dom": 'Bfrtip',
+                    // "lengthMenu": [
+                    //     [25, 50, 100, 200],
+                    //     [25, 50, 100, 200]
+                    // ]
+                    'info': false,
+                    // 'ordering': false,
+                    'paging': false,
             });
 
         function add_point() {
             divCount ++
             // 新增
-            copiedObj = {"id": divCount, "is_log": false, "title": "", "point": 0, "data_type": "int32", "data_sort": 1, "now_value": ""}
+            copiedObj = {"id": divCount, "is_log": false, "title": "", "point": 3000, "data_type": "int32", "data_sort": 1, "now_value": ""}
             modbus_setting_data.push(copiedObj)
             modbus_setting_table.row.add(copiedObj).draw();
             socket.emit("update_point_data", modbus_setting_data, '');
@@ -252,7 +277,7 @@
 
             if (data_row.length >= 1){
                 // 取得資料
-                data = modbus_setting_table.row(data_row[0]).data()
+                data = modbus_setting_table.row('.selected').data()
                 // 複製對象
                 copiedObj = Object.assign({}, data);
                 divCount ++
@@ -293,7 +318,6 @@
         $('#modbus_setting_table tbody').on('click', 'td.dt-control', function () {
             var tr = $(this).closest('tr');
             var row = modbus_setting_table.row(tr);
-    
             if (row.child.isShown()) {
                 // This row is already open - close it
                 row.child.hide();
@@ -321,20 +345,14 @@
 
             $("#progressbar").css("width", "25%");
             $("#progressbar").text("嘗試連線");
-
         }
-
 
         socket.on('connect_modbus', function (data) {
             // 連線中
             console.log(data)
             $("#progressbar").css("width", data.progress);
             $("#progressbar").text(data.msg);
-
-
         });
-
-
 
         function disconnect_modbus() {
             // 中斷連線
@@ -386,10 +404,11 @@
             }
         });
 
-        $("#modbus_setting_table").on("change", "input, select", function () {
+        $("#modbus_setting_table").on("change", "input, select", function () { // 資料變更
             tr = $(this).closest('tr').prev();
             var row = modbus_setting_table.row(tr);
 
+            // 有在表格上 沒在表格上 方法不一樣
             name = $(this).attr("name")
             if(name === "title"){
                 modbus_setting_table.cell(row, 1).data($(this).val())
@@ -397,11 +416,16 @@
                 modbus_setting_table.cell(row, 2).data($(this).val())
             } else if (name === "data_type"){
                 modbus_setting_table.cell(row, 3).data($(this).val())
+            } else if (name === "log"){
+                modbus_setting_table.row(row).data().is_log = $(this).prop('checked')
+            } else if (name === "data_sort"){
+                modbus_setting_table.row(row).data().data_sort = $(this).val()
             }
+
             socket.emit("update_point_data", [row.data()], '');
         });
 
-        $("#basic_setting").on("change", "input, select", function () {
+        $("#basic_setting").on("change", "input, select", function () { // 資料變更
             slave = $("#slave").val()
             point_type = $("#point_type").val()
             time_sleep = $("#time_sleep").val()
@@ -409,6 +433,7 @@
         });
 
         function export_point_data() {
+            // 匯出功能
             export_data = []
             for (const [index, value] of modbus_setting_data.entries()){
                 copiedObj = Object.assign({}, value);
@@ -424,9 +449,7 @@
             URL.revokeObjectURL(a.href);
         }
 
-
-        // 匯入功能
-        const fileInput = document.getElementById('fileInput');
+        const fileInput = document.getElementById('fileInput'); // 匯入功能
         fileInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -457,7 +480,84 @@
         }
         });
 
+        var history_table = $('#history_table').DataTable({
+            'language': language,
+            'data': [{'1': 651510085, 'date_time': '2023-09-13 14:36:57'}],
+            'columnDefs': [{ "targets": 0, 'className': 'text-center'}],
+            'columns': [{className: 'dt-text', data: "date_time"}],
+            // "lengthMenu": [
+            //                 [25, 50, 100, 200],
+            //                 [25, 50, 100, 200]
+            //             ]
+                    });
 
+        function reset_history_checkbox(){
+            html_text = '<div class="col-auto">篩選欄位：</div>'
+            table_title = '<th>時間</th>'
+            history_columnDefs = [{ "targets": 0, 'className': 'text-center'}]
+            history_columns = [{className: 'dt-text', data: "date_time"}]
+
+            for (const [index, value] of modbus_setting_data.entries()){
+                if (value.is_log === true) {
+                    html_text += `
+                    <div class="col-auto">
+                    <input class="form-check-input" type="checkbox" id="show${value.id}" value="${value.id}" checked>
+                    <label class="form-check-label" for="show${value.id}">
+                        ${value.title}
+                    </label>
+                    </div>
+                    `
+                    history_columnDefs.push({ "targets": index+1,'className': 'text-start'})
+                    history_columns.push({className: 'dt-text', data: value.id})
+                    table_title += `<th>${value.title}</th>`
+                }
+            }
+            $("#show_switch").html(html_text)
+
+            history_table.destroy();
+            $("#history_table").html(`<thead><tr>${table_title}</tr></thead>`)
+
+            if (history_columns.length === 1){
+                history_table = $('#history_table').DataTable({
+                    'language': language,
+                    "lengthMenu": [
+                            [25, 50, 100, 200],
+                            [25, 50, 100, 200]
+                        ]
+                });
+            } else {
+                console.log(history_columnDefs)
+                console.log(history_columns)
+                history_table = $('#history_table').DataTable({
+                        'language': language,
+                        'data': [],
+                        'columnDefs': history_columnDefs,
+                        'columns': history_columns,
+                        "lengthMenu": [
+                            [20, 50, 100, 200],
+                            [20, 50, 100, 200]
+                        ],
+                        "order": [[0, "desc"]],
+                });
+            }
+        }
+
+        socket.on('update_history', function (data) {
+            // 連線成功
+            history_table.row.add(data).draw()
+            rowCount = history_table.rows().count();
+            if (rowCount > 1000) {
+                history_table.row(0).remove().draw(false);
+            }
+        });
+
+        $("#show_switch").on("change", "input, select", function () {
+            // TODO 可以選擇預先顯示的資料，少傳送資料會出錯
+            // e.preventDefault();
+            // $(this).prop('checked')
+            var column = history_table.column($(this).attr('value'));
+            column.visible(!column.visible());
+        });
     </script>
 </body>
 
