@@ -64,7 +64,7 @@
                         <!-- Modbus Point Type -->
                     </div>
                     <div class="form-floating">
-                        <input type="number" class="form-control " id="time_sleep" placeholder="1" value="1">
+                        <input type="number" class="form-control " id="time_sleep" placeholder="1" value="1" min="1">
                         <label for="floatingInputGrid">延遲秒數</label>
                     </div>
                 </div>
@@ -89,7 +89,7 @@
                 </div>
 
                 <div class="g-2 my-2">
-                    <table id="modbus_setting_table" class="display compact table-striped" style="width:100%">
+                    <table id="modbus_setting_table" class="display compact table-striped row-border" style="width:100%">
                         <thead>
                             <tr>
                                 <th></th>
@@ -134,7 +134,7 @@
     <script type="text/javascript">
         var socket = io.connect();
         var divCount = 1;
-        var modbus_setting_data = [{"id": 1, "is_log": false, "title": "aa", "point": 3002, "data_type": "int32", "data_sort": 1, "now_value": ""}]
+        var modbus_setting_data = [{"id": 1, "is_log": false, "title": "", "point": 3002, "data_type": "int32", "data_sort": 1, "now_value": "", "scale": 1, "decimal": 0}]
         var language = {
             "processing": "處理中...",
             "loadingRecords": "載入中...",
@@ -189,12 +189,12 @@
             'className': 'text-center'
             },{
             "targets": 4,
-            'className': 'text-start',
+            'className': 'text-end',
         },]
 
         function open_row(d) {
             return (`
-            <div class="row g-2" name="point">
+            <div class="row" name="point">
                 <div class="input-group">
                     <span class="input-group-text" name="id" title="ID">${d.id}</span>
 
@@ -204,15 +204,25 @@
                     </label>
 
                     <div class="form-floating">
-                        <input type="text" class="form-control" id="title${d.id}" name="title" placeholder="欄位名稱" value="${d.title}">
-                        <label for="title">logs的欄位名稱</label>
+                        <input type="text" class="form-control" id="title${d.id}" name="title" placeholder="欄位名稱" value="${d.title}" title="歷史紀錄的欄位名稱">
+                        <label>欄位名稱</label>
+                    </div>
+
+                    <div class="form-floating">
+                        <input type="number" class="form-control" name="scale" placeholder="比例" value="${d.scale}" max="100" min="1" title="結果除與這個數字(通常除以1, 10, 100, 1000...)">
+                        <label>比例</label>
+                    </div>
+
+                    <div class="form-floating">
+                        <input type="number" class="form-control" name="decimal" placeholder="小數點位數" value="${d.decimal}" max="10" min="0" title="要顯示小數點後幾位">
+                        <label>小數點位數</label>
                     </div>
                 </div>
 
                 <div class="input-group">
                     <div class="form-floating">
                         <input type="number" class="form-control" name="address" placeholder="點位" value="${d.point}">
-                        <label for="title">點位</label>
+                        <label>點位</label>
                     </div>
 
                     <div class="form-floating">
@@ -227,16 +237,15 @@
                             <option value="float32" ${d.data_type == "float32" ? "selected" :""}>float32</option>
                             <option value="float64" ${d.data_type == "float64" ? "selected" :""}>float64</option>
                         </select>
-                        <label for="data_type">資料型態</label>
+                        <label>資料型態</label>
                     </div>
-
 
                     <div class="form-floating">
                         <select class="form-select" name="data_sort">
                             <option value=1 ${d.data_sort == 1 ? "selected" :""}>低到高</option>
                             <option value=2 ${d.data_sort == 2 ? "selected" :""}>高到低</option>
                         </select>
-                        <label for="data_type">位元排序</label>
+                        <label>位元排序</label>
                     </div>
                 </div>
             </div>
@@ -263,7 +272,7 @@
         function add_point() {
             divCount ++
             // 新增
-            copiedObj = {"id": divCount, "is_log": false, "title": "", "point": 3000, "data_type": "int32", "data_sort": 1, "now_value": ""}
+            copiedObj = {"id": divCount, "is_log": false, "title": "", "point": 3000, "data_type": "int32", "data_sort": 1, "now_value": "", "scale": 1, "decimal": 0}
             modbus_setting_data.push(copiedObj)
             modbus_setting_table.row.add(copiedObj).draw();
             socket.emit("update_point_data", modbus_setting_data, '');
@@ -297,13 +306,18 @@
                 next_tr.addClass('selected')
             }
 
-            // 取得列
+            // 取得列 (需要後台先刪除才不會出錯)
             data_row = modbus_setting_table.row(selected)
+
+            // socket.emit("del_point_data", data_row.data());
+            if (data_row.data()){
+                socket.emit("del_point_data", data_row.data());
+            }
+
             if (data_row.length >= 1){
                 modbus_setting_table.row(data_row[0]).remove().draw();
             }
             modbus_setting_data.splice(data_row[0], 1)
-            socket.emit("del_point_data", data_row.data());
         }
 
         $('#modbus_setting_table tbody').on('click', 'td.dt-text', function () {
@@ -420,8 +434,11 @@
                 modbus_setting_table.row(row).data().is_log = $(this).prop('checked')
             } else if (name === "data_sort"){
                 modbus_setting_table.row(row).data().data_sort = $(this).val()
+            } else if (name === "scale"){
+                modbus_setting_table.row(row).data().scale = $(this).val()
+            } else if (name === "decimal"){
+                modbus_setting_table.row(row).data().decimal = $(this).val()
             }
-
             socket.emit("update_point_data", [row.data()], '');
         });
 
@@ -467,6 +484,7 @@
                 for (const [index, value] of jsonData.entries()){
                     divCount = index + 1
                     value.id = divCount
+                    value.now_value = ''
                     modbus_setting_data.push(value)
                     modbus_setting_table.row.add(value).draw();
                 }
@@ -480,9 +498,21 @@
         }
         });
 
+        function arraysAreEqual(arr1, arr2) {
+            if (arr1.length !== arr2.length) {
+                return false;
+            }
+            for (let i = 0; i < arr1.length; i++) {
+                if (arr1[i] !== arr2[i]) {
+                return false;
+                }
+            }
+            return true;
+            }
+
         var history_table = $('#history_table').DataTable({
             'language': language,
-            'data': [{'1': 651510085, 'date_time': '2023-09-13 14:36:57'}],
+            'data': [],
             'columnDefs': [{ "targets": 0, 'className': 'text-center'}],
             'columns': [{className: 'dt-text', data: "date_time"}],
             // "lengthMenu": [
@@ -490,13 +520,16 @@
             //                 [25, 50, 100, 200]
             //             ]
                     });
+        var history_columns_list = []
 
         function reset_history_checkbox(){
+            
             html_text = '<div class="col-auto">篩選欄位：</div>'
             table_title = '<th>時間</th>'
             history_columnDefs = [{ "targets": 0, 'className': 'text-center'}]
             history_columns = [{className: 'dt-text', data: "date_time"}]
-
+            targets_index = 0
+            history_columns_list = ['date_time']
             for (const [index, value] of modbus_setting_data.entries()){
                 if (value.is_log === true) {
                     html_text += `
@@ -507,9 +540,11 @@
                     </label>
                     </div>
                     `
-                    history_columnDefs.push({ "targets": index+1,'className': 'text-start'})
+                    targets_index ++
+                    history_columnDefs.push({ "targets": targets_index,'className': 'text-start'})
                     history_columns.push({className: 'dt-text', data: value.id})
                     table_title += `<th>${value.title}</th>`
+                    history_columns_list.push(`${value.id}`)
                 }
             }
             $("#show_switch").html(html_text)
@@ -526,8 +561,8 @@
                         ]
                 });
             } else {
-                console.log(history_columnDefs)
-                console.log(history_columns)
+                // console.log(history_columnDefs)
+                // console.log(history_columns)
                 history_table = $('#history_table').DataTable({
                         'language': language,
                         'data': [],
@@ -544,6 +579,12 @@
 
         socket.on('update_history', function (data) {
             // 連線成功
+            // console.log(arraysAreEqual(history_columns_list, Object.keys(data)))
+            if (arraysAreEqual(history_columns_list, Object.keys(data)) === false){
+                reset_history_checkbox()
+                history_columns_list = Object.keys(data)
+            }
+
             history_table.row.add(data).draw()
             rowCount = history_table.rows().count();
             if (rowCount > 1000) {
@@ -552,7 +593,8 @@
         });
 
         $("#show_switch").on("change", "input, select", function () {
-            // TODO 可以選擇預先顯示的資料，少傳送資料會出錯
+            // TODO 可以選擇預先顯示的資料
+            // 開始記錄按鈕
             // e.preventDefault();
             // $(this).prop('checked')
             var column = history_table.column($(this).attr('value'));

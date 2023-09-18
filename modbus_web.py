@@ -77,13 +77,30 @@ def update_point_data(datas, mode=''):
             point_list.append(point+2)
         elif data_type[-2:] == '64':
             point_list.append(point+4)
+    grouped_numbers = group_nearby_numbers(point_list)
+    modbus_connect_room[request.sid].grouped_numbers = grouped_numbers
 
-    point_list.sort()
-    count = point_list[-1] - point_list[0]
-    count = 1 if count == 0 else count
-    # TODO 差距太多 在抓值的時候會出錯誤
-    modbus_connect_room[request.sid].start_point = point_list[0]
-    modbus_connect_room[request.sid].count_point = count
+def group_nearby_numbers(numbers: list):
+    # 演算法, 變更請小心
+    # 將list 根據數字 區分成多個list (ex: [3, 2, 70, 10, 50, 65, 1] >> [[1, 2, 3, 10], [50], [65, 70]])
+    # threshold 閥值 數字超過多少 會換下一個list
+    threshold = 10
+    numbers.sort()
+
+    result = []
+    current_group = []
+    for num in numbers:
+        if not current_group:
+            current_group.append(num)
+        elif num - current_group[-1] <= threshold:
+            current_group.append(num)
+        else:
+            result.append(current_group)
+            current_group = [num]
+    if current_group:
+        result.append(current_group)
+    return result
+
 
 @socketio.on('del_point_data')
 def del_point_data(data):
@@ -113,10 +130,9 @@ class ModbusThread(Thread):
         self.point_type = '3'
         self.slave = 1
         self.point_data = {}
-        self.start_point = 1
-        self.count_point = 1
+        self.grouped_numbers = []
 
-    def test_connection(self, client):
+    def test_connection(self, client:ModbusTcpClient):
         connection = client.connect()
         error_msg = ''
         if not connection:
@@ -144,8 +160,7 @@ class ModbusThread(Thread):
 
 
     def run(self):
-        client = ModbusTcpClient(self.ip, port=int(self.port), timeout=3)
-        # client = ModbusUdpClient(self.ip, port=int(self.port))
+        client = ModbusTcpClient(self.ip, port=int(self.port), timeout=10) # timeout 10 好像是Udp的設定??
         try:
             if self.test_connection(client) == False:
                 return
@@ -157,7 +172,7 @@ class ModbusThread(Thread):
                 for x in range(self.time_sleep, 0, -1):
                     time.sleep(1)
                     current_time = time.localtime()
-                    if x > self.time_sleep:
+                    if x > self.time_sleep or self.exit_signal.is_set():
                         break
 
                 if self.point_type == '1':
@@ -169,71 +184,94 @@ class ModbusThread(Thread):
                 else:
                     read_funt = client.read_holding_registers
 
-                if len(self.point_data):
-                    result = read_funt(self.start_point-1, count=self.count_point, slave=self.slave) # 修正為從0開始
-                    result_registers = result.registers
-                    history_data = {}
+                if len(self.point_data) == 0:
+                    continue
 
-                    for key, value in self.point_data.items():
-                        is_log = value.get('is_log', False)
-                        # title = value.get('title', '')
-                        point = int(value.get('point', 3000))
-                        data_type = value.get('data_type', 'int32')
+                grouped_registers = []
+                for numbers in self.grouped_numbers:
+                    count = numbers[-1] - numbers[0]
+                    count = 1 if count == 0 else count
+                    result = read_funt(numbers[0]-1, count=count, slave=self.slave) # 修正為從0開始
+                    grouped_registers.append(result.registers)
 
-                        start_list_point = point - self.start_point
+                print('點位分區:', self.grouped_numbers)
+                print('分區資料:', grouped_registers)
 
-                        if data_type[-2:] == '16':
-                            count = 1
-                        elif data_type[-2:] == '32':
-                            count = 2
-                        elif data_type[-2:] == '64':
-                            count = 4
+                history_data = {}
+                for key, value in self.point_data.items():
+                    is_log = value.get('is_log', False)
+                    # title = value.get('title', '')
+                    point = int(value.get('point', 3000))
+                    data_type = value.get('data_type', 'int32')
 
-                        parser_list = result_registers[start_list_point: start_list_point+count]
+                    for i, array in enumerate(self.grouped_numbers):
+                        if point not in array:
+                            continue
+                        registers = grouped_registers[i]
+                        start_list_point1 = point - array[0]
+                        break
 
-                        data_sort = value.get('data_sort', "1")
-                        if data_sort == "2":
-                            parser_list = parser_list[::-1]
+                    if data_type[-2:] == '16':
+                        count = 1
+                    elif data_type[-2:] == '32':
+                        count = 2
+                    elif data_type[-2:] == '64':
+                        count = 4
 
-                        try:
-                            decoder = BinaryPayloadDecoder.fromRegisters(parser_list, byteorder=Endian.Big, wordorder=Endian.Big)
-                            if parser_list == []:
-                                active_power = ''
-                            elif data_type == 'int16':
-                                active_power = decoder.decode_16bit_int()
-                            elif data_type == 'int32':
-                                active_power = decoder.decode_32bit_int()
-                            elif data_type == 'int64':
-                                active_power = decoder.decode_64bit_int()
-                            elif data_type == 'uint16':
-                                active_power = decoder.decode_16bit_uint()
-                            elif data_type == 'uint32':
-                                active_power = decoder.decode_32bit_uint()
-                            elif data_type == 'uint64':
-                                active_power = decoder.decode_64bit_uint()
-                            elif data_type == 'float16':
-                                active_power = '{:f}'.format(decoder.decode_16bit_float())
-                            elif data_type == 'float32':
-                                active_power = '{:f}'.format(decoder.decode_32bit_float())
-                            elif data_type == 'float64':
-                                active_power = '{:f}'.format(decoder.decode_64bit_float())
-                        except:
-                            active_power = "異常"
-                        self.point_data[key]['now_value'] = active_power
+                    parser_list = registers[start_list_point1: start_list_point1+count]
 
-                        if is_log:
-                            history_data[key] = active_power
+                    data_sort = value.get('data_sort', "1")
+                    if data_sort == "2":
+                        parser_list = parser_list[::-1]
+                    scale = int(value.get('scale', "1"))
+                    decimal = int(value.get('decimal', "0"))
 
+                    try:
+                        decoder = BinaryPayloadDecoder.fromRegisters(parser_list, byteorder=Endian.BIG, wordorder=Endian.LITTLE)
+                        if parser_list == []:
+                            active_power = ''
+                        elif data_type == 'int16':
+                            active_power = decoder.decode_16bit_int()
+                        elif data_type == 'int32':
+                            active_power = decoder.decode_32bit_int()
+                        elif data_type == 'int64':
+                            active_power = decoder.decode_64bit_int()
+                        elif data_type == 'uint16':
+                            active_power = decoder.decode_16bit_uint()
+                        elif data_type == 'uint32':
+                            active_power = decoder.decode_32bit_uint()
+                        elif data_type == 'uint64':
+                            active_power = decoder.decode_64bit_uint()
+                        elif data_type == 'float16':
+                            active_power = decoder.decode_16bit_float()
+                        elif data_type == 'float32':
+                            active_power = decoder.decode_32bit_float()
+                        elif data_type == 'float64':
+                            active_power = decoder.decode_64bit_float()
 
-                    with app.app_context():
-                        emit('modbus_value', self.point_data, namespace='/', broadcast=True, room=self.room)
-                        if history_data:
-                            history_data['date_time'] = time.strftime("%Y-%m-%d %H:%M:%S", current_time)
-                            print(history_data)
-                            emit('update_history', history_data, namespace='/', broadcast=True, room=self.room)
+                        active_power = active_power / scale
+                        # active_power = round(active_power, decimal) # 無條件捨去
+
+                        active_power = f"{active_power:.{decimal}f}"
+
+                    except Exception as e:
+                        # print(e)
+                        active_power = "異常"
+                    self.point_data[key]['now_value'] = active_power
+
+                    if is_log:
+                        history_data[key] = active_power
+
+                with app.app_context():
+                    emit('modbus_value', self.point_data, namespace='/', broadcast=True, room=self.room)
+                    if history_data:
+                        history_data['date_time'] = time.strftime("%Y-%m-%d %H:%M:%S", current_time)
+                        print(history_data)
+                        emit('update_history', history_data, namespace='/', broadcast=True, room=self.room)
 
         finally:
             # print('斷開連線', self.room)
+            client.close()
             del modbus_connect_room[self.room]
             print("剩餘modbus連線數:", len(modbus_connect_room))
 
