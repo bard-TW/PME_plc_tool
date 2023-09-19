@@ -13,6 +13,8 @@ from ping3 import ping, verbose_ping
 from pymodbus.client import ModbusTcpClient, ModbusUdpClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder
+from pymodbus.exceptions import ModbusIOException
+
 import traceback
 
 # request.sid 連線房間
@@ -193,6 +195,9 @@ class ModbusThread(Thread):
                     count = numbers[-1] - numbers[0]
                     count = 1 if count == 0 else count
                     result = read_funt(numbers[0]-1, count=count, slave=self.slave) # 修正為從0開始
+                    if result.isError() == True:
+                        grouped_registers.append([])
+                        continue
                     grouped_registers.append(result.registers)
 
                 print('點位分區:', self.grouped_numbers)
@@ -230,7 +235,7 @@ class ModbusThread(Thread):
                     try:
                         decoder = BinaryPayloadDecoder.fromRegisters(parser_list, byteorder=Endian.BIG, wordorder=Endian.LITTLE)
                         if parser_list == []:
-                            active_power = ''
+                            active_power = '異常'
                         elif data_type == 'int16':
                             active_power = decoder.decode_16bit_int()
                         elif data_type == 'int32':

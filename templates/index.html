@@ -109,9 +109,6 @@
                     <div class="col d-grid gap-2">
                         <button type="button" class="btn btn-outline-success" onclick="reset_history_checkbox()">初始化\重置表格</button>
                     </div>
-                    <div class="col d-grid gap-2">
-                        <button type="button" class="btn btn-outline-danger" disabled>清空</button>
-                    </div>
                 </div>
 
                 <div id="show_switch" class="row user-select-none"></div>
@@ -577,15 +574,15 @@
             history_columns_list = ['date_time']
             for (const [index, value] of modbus_setting_data.entries()){
                 if (value.is_log === true) {
+                    targets_index ++
                     html_text += `
                     <div class="col-auto">
-                    <input class="form-check-input" type="checkbox" id="show${value.id}" value="${value.id}" checked>
+                    <input class="form-check-input" type="checkbox" id="show${value.id}" value="${targets_index}" checked>
                     <label class="form-check-label" for="show${value.id}">
                         ${value.title}
                     </label>
                     </div>
                     `
-                    targets_index ++
                     history_columnDefs.push({ "targets": targets_index,'className': 'text-start'})
                     history_columns.push({className: 'dt-text', data: value.id})
                     table_title += `<th>${value.title}</th>`
