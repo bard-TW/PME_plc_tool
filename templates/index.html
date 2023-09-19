@@ -16,7 +16,6 @@
     <!-- 表格 -->
     <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet" />
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
 </head>
 
 <body>
@@ -24,7 +23,7 @@
         <div class="row">
             <div class="col-lg-5 col-xl-4">
                 <h3>Modbus 設定</h3>
-                
+
                 <div class="row g-2 my-2">
                     <div class="col d-grid gap-2">
                         <input type="file" class="btn btn-outline-success" id="fileInput" title="讀取點位資料" accept=".json">
@@ -34,7 +33,7 @@
                         <button type="button" class="btn btn-outline-primary" onclick="export_point_data()">儲存點位資料</button>
                     </div>
                 </div>
-                <div class="input-group g-2 my-2">
+                <div class="input-group g-2 my-2" id="basic_inforation">
                     <div class="form-floating">
                         <input type="text" class="form-control" id="ip" placeholder="192.168.0.1" value="127.0.0.1" required>
                         <label for="floatingInputGrid">IP</label>
@@ -49,12 +48,12 @@
 
                 <div class="input-group" id="basic_setting">
                     <div class="form-floating">
-                        <input type="number" class="form-control " id="slave" placeholder="1" value="1">
+                        <input type="number" class="form-control " id="slave" placeholder="1" value="1" min="1">
                         <label for="floatingInputGrid">Slave</label>
                     </div>
 
                     <div class="form-floating">
-                        <select class="form-select " id="point_type" aria-label="" disabled>
+                        <select class="form-select " id="point_type" aria-label="">
                             <option value="1">01: COIL STATUS</option>
                             <option value="2">02: INPUT STATUS</option>
                             <option selected value="3">03: HOLDING REGISTER</option>
@@ -64,7 +63,7 @@
                         <!-- Modbus Point Type -->
                     </div>
                     <div class="form-floating">
-                        <input type="number" class="form-control " id="time_sleep" placeholder="1" value="1" min="1">
+                        <input type="number" class="form-control " id="time_sleep" placeholder="1" value="1" step="1" min="1">
                         <label for="floatingInputGrid">延遲秒數</label>
                     </div>
                 </div>
@@ -89,7 +88,7 @@
                 </div>
 
                 <div class="g-2 my-2">
-                    <table id="modbus_setting_table" class="display compact table-striped row-border" style="width:100%">
+                    <table id="modbus_setting_table" class="display compact" style="width:100%">
                         <thead>
                             <tr>
                                 <th></th>
@@ -101,7 +100,6 @@
                         </thead>
                     </table>
                 </div>
-
             </div>
 
             <div class="col-lg-7 col-xl-8">
@@ -119,7 +117,7 @@
                 <div id="show_switch" class="row user-select-none"></div>
 
                 <br>
-                <table id="history_table" class="display compact table-striped" style="width:100%">
+                <table id="history_table" class="display compact" style="width:100%">
                     <thead>
                         <tr>
                             <th>時間</th>
@@ -194,7 +192,7 @@
 
         function open_row(d) {
             return (`
-            <div class="row" name="point">
+            <div class="row pb-2" name="point">
                 <div class="input-group">
                     <span class="input-group-text" name="id" title="ID">${d.id}</span>
 
@@ -221,7 +219,7 @@
 
                 <div class="input-group">
                     <div class="form-floating">
-                        <input type="number" class="form-control" name="address" placeholder="點位" value="${d.point}">
+                        <input type="number" class="form-control" name="address" placeholder="點位" value="${d.point}" max="9999" min="1" >
                         <label>點位</label>
                     </div>
 
@@ -344,21 +342,35 @@
         });
 
         socket.on('disconnect', function (data) {
+            disconnect_modbus()
             alert('與伺服器連線中斷，請重新整理頁面')
         });
+
+        $("#basic_inforation").on("change", "input", function () { // 資料變更
+            attr_id = $(this).attr("id")
+            if ($(this).val() === ''){
+                $(this).addClass('is-invalid')
+            } else {
+                $(this).removeClass('is-invalid')
+            }
+        })
 
         function connect_modbus() {
             // 連線
             ip = $("#ip").val()
             port = $("#port").val()
-            socket.emit("connect_modbus", ip, port);
-            
-            $("#connect_modbus_btu").prop("disabled", true);
-            $("#ip").prop("disabled", true);
-            $("#port").prop("disabled", true);
+            if (socket.connected === true){
+                    socket.emit("connect_modbus", ip, port);
 
-            $("#progressbar").css("width", "25%");
-            $("#progressbar").text("嘗試連線");
+                    $("#connect_modbus_btu").prop("disabled", true);
+                    $("#ip").prop("disabled", true);
+                    $("#port").prop("disabled", true);
+
+                    $("#progressbar").css("width", "25%");
+                    $("#progressbar").text("嘗試連線");
+                } else {
+                    alert('與伺服器連線中斷，請確認是否開啟')
+                }
         }
 
         socket.on('connect_modbus', function (data) {
@@ -427,7 +439,12 @@
             if(name === "title"){
                 modbus_setting_table.cell(row, 1).data($(this).val())
             } else if (name === "address"){
-                modbus_setting_table.cell(row, 2).data($(this).val())
+                if ($(this).val() === ''){
+                    $(this).addClass('is-invalid')
+                } else {
+                    modbus_setting_table.cell(row, 2).data($(this).val())
+                    $(this).removeClass('is-invalid')
+                }
             } else if (name === "data_type"){
                 modbus_setting_table.cell(row, 3).data($(this).val())
             } else if (name === "log"){
@@ -435,17 +452,45 @@
             } else if (name === "data_sort"){
                 modbus_setting_table.row(row).data().data_sort = $(this).val()
             } else if (name === "scale"){
-                modbus_setting_table.row(row).data().scale = $(this).val()
+                if ($(this).val() === ''){
+                    $(this).addClass('is-invalid')
+                } else {
+                    modbus_setting_table.row(row).data().scale = $(this).val()
+                    $(this).removeClass('is-invalid')
+                }
             } else if (name === "decimal"){
-                modbus_setting_table.row(row).data().decimal = $(this).val()
+                if ($(this).val() === ''){
+                    $(this).addClass('is-invalid')
+                } else {
+                    modbus_setting_table.row(row).data().decimal = $(this).val()
+                    $(this).removeClass('is-invalid')
+                }
             }
             socket.emit("update_point_data", [row.data()], '');
         });
 
         $("#basic_setting").on("change", "input, select", function () { // 資料變更
-            slave = $("#slave").val()
+            slave = null
+            time_sleep = null
+
+            if ($("#slave").val() === ''){
+                $("#slave").addClass('is-invalid')
+            } else {
+                slave = $("#slave").val()
+                $("#slave").removeClass('is-invalid')
+            }
+
+            if ($("#time_sleep").val() === ''){
+                $("#time_sleep").addClass('is-invalid')
+            } else {
+                time_sleep = $("#time_sleep").val()
+                $("#time_sleep").removeClass('is-invalid')
+            }
+
+            if (slave === null || time_sleep ===null){
+                return
+            }
             point_type = $("#point_type").val()
-            time_sleep = $("#time_sleep").val()
             socket.emit("update_basic_data", {'slave': slave, 'point_type': point_type, 'time_sleep': time_sleep});
         });
 
@@ -602,13 +647,5 @@
         });
     </script>
 </body>
-
 </html>
-
-
-
-
-
-
-
 

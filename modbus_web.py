@@ -13,6 +13,7 @@ from ping3 import ping, verbose_ping
 from pymodbus.client import ModbusTcpClient, ModbusUdpClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder
+import traceback
 
 # request.sid 連線房間
 
@@ -223,7 +224,7 @@ class ModbusThread(Thread):
                     data_sort = value.get('data_sort', "1")
                     if data_sort == "2":
                         parser_list = parser_list[::-1]
-                    scale = int(value.get('scale', "1"))
+                    scale = float(value.get('scale', "1"))
                     decimal = int(value.get('decimal', "0"))
 
                     try:
@@ -249,13 +250,14 @@ class ModbusThread(Thread):
                         elif data_type == 'float64':
                             active_power = decoder.decode_64bit_float()
 
-                        active_power = active_power / scale
-                        # active_power = round(active_power, decimal) # 無條件捨去
-
-                        active_power = f"{active_power:.{decimal}f}"
+                        if active_power:
+                            # 計算比例 小數點
+                            active_power = active_power / scale
+                            active_power = f"{active_power:.{decimal}f}"
 
                     except Exception as e:
-                        # print(e)
+                        traceback.print_exc()
+                        print(e)
                         active_power = "異常"
                     self.point_data[key]['now_value'] = active_power
 
