@@ -9,11 +9,10 @@ from engineio.async_drivers import \
     threading  # * 替代解決辦法 socketio使用threading 打包才能執行
 from flask import Flask, jsonify, render_template, request
 from flask_socketio import SocketIO, emit
-from ping3 import ping, verbose_ping
-from pymodbus.client import ModbusTcpClient, ModbusUdpClient
+from ping3 import ping
+from pymodbus.client import ModbusTcpClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder
-from pymodbus.exceptions import ModbusIOException
 
 import traceback
 
@@ -28,18 +27,15 @@ modbus_connect_room = {} # sid: obj
 def index():
     return render_template('index.html')
 
+# @app.route('/')
+# def index():
+#     return render_template('')
+
 @socketio.on('connect')
 def handle_connect():
-    print('Client connected', request.sid)
-
-    # # 模拟获取数据，实际情况中可以替换为获取实际数据的逻辑
-    # data = f"Data for {target_ip}"
-    # time.sleep(3)
-    # emit('status_response', {'data': data}, room=request.sid)
     return jsonify(
         {"response": "ok"}
     )
-
 
 @socketio.on('connect_modbus')
 def connect_modbus(ip, port):
@@ -73,7 +69,7 @@ def update_point_data(datas, mode=''):
         modbus_connect_room[request.sid].point_data[data['id']] = data
 
     point_list = []
-    for key, value in modbus_connect_room[request.sid].point_data.items():
+    for _, value in modbus_connect_room[request.sid].point_data.items():
         data_type = value.get('data_type', 'int32')
         point = int(value.get('point', 3000))
         point_list.append(point)
@@ -105,13 +101,11 @@ def group_nearby_numbers(numbers: list):
         result.append(current_group)
     return result
 
-
 @socketio.on('del_point_data')
 def del_point_data(data):
     if request.sid in modbus_connect_room:
         if data['id'] in modbus_connect_room[request.sid].point_data:
             del modbus_connect_room[request.sid].point_data[data['id']]
-
 
 @socketio.on('update_basic_data')
 def update_basic_data(data):
@@ -161,7 +155,6 @@ class ModbusThread(Thread):
                 emit('connect_modbus_error', {'data': error_msg}, namespace='/', broadcast=True, room=self.room)
             return False
         return True
-
 
     def run(self):
         client = ModbusTcpClient(self.ip, port=int(self.port), timeout=10) # timeout 10 好像是Udp的設定??
