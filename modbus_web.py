@@ -54,6 +54,7 @@ def connect_modbus(ip, port):
 @socketio.on('disconnect_modbus')
 def disconnect_modbus():
     if request.sid in modbus_connect_room:
+        emit('connect_modbus', {'progress': "50%",  "msg": "中斷連線中"}, room=request.sid)
         modbus_connect_room[request.sid].exit_signal.set()
 
 @socketio.on('disconnect')
@@ -174,6 +175,10 @@ class ModbusThread(Thread):
             while not self.exit_signal.is_set():
                 for x in range(self.time_sleep, 0, -1):
                     time.sleep(1)
+                    if self.time_sleep >=5:
+                        with app.app_context():
+                            emit('wait_time_progress', {'progress': f"{int((self.time_sleep-x)/(self.time_sleep-1)*100)}%"}, namespace='/', broadcast=True, room=self.room)
+
                     current_time = time.localtime()
                     if x > self.time_sleep or self.exit_signal.is_set():
                         break
@@ -281,6 +286,8 @@ class ModbusThread(Thread):
             client.close()
             del modbus_connect_room[self.room]
             print("剩餘modbus連線數:", len(modbus_connect_room))
+            with app.app_context():
+                emit('connect_modbus', {'progress': "0%",  "msg": "已中斷連線"}, namespace='/', broadcast=True, room=self.room)
 
 def ping_ip(ip_address):
     response_time = ping(ip_address)

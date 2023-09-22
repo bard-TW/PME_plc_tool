@@ -16,9 +16,24 @@
     <!-- 表格 -->
     <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet" />
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <!-- 圖表 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" 
+    integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <style>
+        /* 自定義進度條動畫秒數 */
+        .progress-bar {
+            transition: width 1s ease-in-out; /* 在這裡調整動畫秒數，這裡設置為1秒 */
+        }
+    </style>
 </head>
 
 <body>
+    <div class="progress" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" style="height: 1px">
+        <div class="progress-bar" id="wait_time_progress" style="width: 0%"></div>
+    </div>
+
     <div class="container-fluid text-center">
         <div class="row">
             <div class="col-lg-5 col-xl-4">
@@ -121,6 +136,10 @@
                         </tr>
                     </thead>
                 </table>
+
+                <div>
+                    <canvas id="myChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -375,20 +394,40 @@
             console.log(data)
             $("#progressbar").css("width", data.progress);
             $("#progressbar").text(data.msg);
+
+            if (data.progress === '0%'){
+            $("#connect_modbus_btu").prop("disabled", false);
+            $("#ip").prop("disabled", false);
+            $("#port").prop("disabled", false);
+            $("#disconnect_modbus_btu").hide()
+            $("#connect_modbus_btu").show()
+            $("#disconnect_modbus_btu").prop("disabled", false);
+            }
         });
+
+
+        socket.on('wait_time_progress', function (data) {
+            $("#wait_time_progress").css("width", data.progress);
+        });
+
 
         function disconnect_modbus() {
             // 中斷連線
             socket.emit("disconnect_modbus");
-            $("#connect_modbus_btu").prop("disabled", false);
-            $("#ip").prop("disabled", false);
-            $("#port").prop("disabled", false);
+            if (socket.connected === true){
+                $("#disconnect_modbus_btu").prop("disabled", true);
+            } else {
+                $("#connect_modbus_btu").prop("disabled", false);
 
-            $("#progressbar").css("width", "0%");
-            $("#progressbar").text("連線中斷");
+                $("#progressbar").css("width", "0%");
+                $("#progressbar").text("連線失敗");
 
-            $("#disconnect_modbus_btu").hide()
-            $("#connect_modbus_btu").show()
+                $("#ip").prop("disabled", false);
+                $("#port").prop("disabled", false);
+
+                $("#disconnect_modbus_btu").hide()
+                $("#connect_modbus_btu").show()
+            }
         }
 
         socket.on('connect_modbus_error', function (data) {
@@ -404,6 +443,7 @@
 
             $("#disconnect_modbus_btu").hide()
             $("#connect_modbus_btu").show()
+            
         });
 
         socket.on('connect_modbus_success', function (data) {
@@ -557,10 +597,10 @@
             'data': [],
             'columnDefs': [{ "targets": 0, 'className': 'text-center'}],
             'columns': [{className: 'dt-text', data: "date_time"}],
-            // "lengthMenu": [
-            //                 [25, 50, 100, 200],
-            //                 [25, 50, 100, 200]
-            //             ]
+            "lengthMenu": [
+                            [25, 50, 100, 200],
+                            [25, 50, 100, 200]
+                        ]
                     });
         var history_columns_list = []
 
@@ -642,6 +682,34 @@
             var column = history_table.column($(this).attr('value'));
             column.visible(!column.visible());
         });
+
+
+
+
+        // var aa = ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange']
+        // var bb = [12, 19, 3, 5, 2, 3]
+        // var cc = [12, 8, 9, 5, 2, 3]
+        // const ctx = document.getElementById('myChart');
+        // var myLineChart = new Chart(ctx, {
+        //     type: 'line',
+        //     data: {
+        //     labels: aa,
+        //     datasets: [{
+        //         label: '# of Votes',
+        //         data: bb
+        //     },{
+        //         label: 'cc',
+        //         data: cc
+        //     }]
+        //     }
+        // });
+        
+        // aa.shift()
+        // bb.shift()
+        // aa.push('aa')
+        // bb.push(6)
+        // myLineChart.update()
+        // myLineChart.destroy()
     </script>
 </body>
 </html>
