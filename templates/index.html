@@ -115,6 +115,18 @@
                         </thead>
                     </table>
                 </div>
+
+                <div class="g-2 my-2">
+                    <h3>折線圖</h3>
+                    <div class="row g-2 my-2">
+                        <div class="col d-grid gap-2">
+                            <button type="button" class="btn btn-outline-success" onclick="reset_chart()">重置圖表</button>
+                        </div>
+                    </div>
+                    <canvas id="myChart"></canvas>
+                </div>
+                <br>
+
             </div>
 
             <div class="col-lg-7 col-xl-8">
@@ -122,7 +134,7 @@
 
                 <div class="row g-2 my-2">
                     <div class="col d-grid gap-2">
-                        <button type="button" class="btn btn-outline-success" onclick="reset_history_checkbox()">初始化\重置表格</button>
+                        <button type="button" class="btn btn-outline-success" onclick="reset_history_checkbox()">重置表格</button>
                     </div>
                 </div>
 
@@ -136,122 +148,17 @@
                         </tr>
                     </thead>
                 </table>
-
-                <div>
-                    <canvas id="myChart"></canvas>
-                </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='js/datatable.js') }}"></script>
-    <script type="text/javascript">
-        var socket = io.connect();
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/index_datatable.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/index_chart.js') }}"></script>
+    
+    
 
-        socket.on('disconnect', function (data) {
-            disconnect_modbus()
-            alert('與伺服器連線中斷，請重新整理頁面')
-        });
-
-        socket.on('connect_modbus', function (data) {
-            // 連線中
-            console.log(data)
-            $("#progressbar").css("width", data.progress);
-            $("#progressbar").text(data.msg);
-
-            if (data.progress === '0%'){
-            $("#connect_modbus_btu").prop("disabled", false);
-            $("#ip").prop("disabled", false);
-            $("#port").prop("disabled", false);
-            $("#disconnect_modbus_btu").hide()
-            $("#connect_modbus_btu").show()
-            $("#disconnect_modbus_btu").prop("disabled", false);
-            }
-        });
-
-        socket.on('wait_time_progress', function (data) {
-            $("#wait_time_progress").css("width", data.progress);
-        });
-
-        socket.on('connect_modbus_error', function (data) {
-            // 無法連線
-            alert(data.data)
-            $("#connect_modbus_btu").prop("disabled", false);
-
-            $("#progressbar").css("width", "0%");
-            $("#progressbar").text("連線失敗");
-
-            $("#ip").prop("disabled", false);
-            $("#port").prop("disabled", false);
-
-            $("#disconnect_modbus_btu").hide()
-            $("#connect_modbus_btu").show()
-            
-        });
-
-        socket.on('connect_modbus_success', function (data) {
-            // 連線成功
-            $("#progressbar").css("width", "100%");
-            $("#progressbar").text("連線成功");
-
-            $("#connect_modbus_btu").hide()
-            $("#disconnect_modbus_btu").show()
-
-            $("#slave").change()
-            socket.emit("update_point_data", modbus_setting_data, '');
-        });
-
-        socket.on('modbus_value', function (data) {
-            // 連線成功
-            for (const [index, value] of modbus_setting_data.entries()){
-                if (value.id in data){
-                    modbus_setting_table.cell(index, 4).data(data[value.id].now_value)
-                }
-            }
-        });
-
-        socket.on('update_history', function (data) {
-            // 連線成功
-            // console.log(arraysAreEqual(history_columns_list, Object.keys(data)))
-            if (arraysAreEqual(history_columns_list, Object.keys(data)) === false){
-                reset_history_checkbox()
-                history_columns_list = Object.keys(data)
-            }
-
-            history_table.row.add(data).draw()
-            rowCount = history_table.rows().count();
-            if (rowCount > 1000) {
-                history_table.row(0).remove().draw(false);
-            }
-        });
-
-
-        // var aa = ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange']
-        // var bb = [12, 19, 3, 5, 2, 3]
-        // var cc = [12, 8, 9, 5, 2, 3]
-        // const ctx = document.getElementById('myChart');
-        // var myLineChart = new Chart(ctx, {
-        //     type: 'line',
-        //     data: {
-        //     labels: aa,
-        //     datasets: [{
-        //         label: '# of Votes',
-        //         data: bb
-        //     },{
-        //         label: 'cc',
-        //         data: cc
-        //     }]
-        //     }
-        // });
-        
-        // aa.shift()
-        // bb.shift()
-        // aa.push('aa')
-        // bb.push(6)
-        // myLineChart.update()
-        // myLineChart.destroy()
-    </script>
 </body>
 </html>
 
