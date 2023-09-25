@@ -65,17 +65,22 @@ socket.on('modbus_value', function (data) {
 socket.on('update_history', function (data) {
     // 連線成功
     // console.log(arraysAreEqual(history_columns_list, Object.keys(data)))
-    if (arraysAreEqual(history_columns_list, Object.keys(data)) === false) {
-        reset_history_checkbox()
-        history_columns_list = Object.keys(data)
-    }
 
-    history_table.row.add(data).draw()
+    historys = data.history
+    if (arraysAreEqual(history_columns_list, Object.keys(historys)) === false) {
+        reset_history_checkbox()
+        history_columns_list = Object.keys(historys)
+    }
+    
+
+    history_table.row.add(historys).draw()
     rowCount = history_table.rows().count();
     if (rowCount > 1000) {
         history_table.row(0).remove().draw(false);
     }
-    update_chart(data)
+    update_chart(historys)
+
+    $("#number_success").html(data.number_success)
 
 
 });

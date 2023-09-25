@@ -130,6 +130,9 @@ class ModbusThread(Thread):
         self.point_data = {}
         self.grouped_numbers = []
 
+        self.number_of_success = 0
+        self.number_of_connect = 0
+
     def test_connection(self, client:ModbusTcpClient):
         connection = client.connect()
         error_msg = ''
@@ -190,6 +193,7 @@ class ModbusThread(Thread):
 
                 grouped_registers = []
                 for numbers in self.grouped_numbers:
+                    self.number_of_connect += 1
                     count = numbers[-1] - numbers[0]
                     count = 1 if count == 0 else count
                     result = read_funt(numbers[0]-1, count=count, slave=self.slave) # 修正為從0開始
@@ -197,6 +201,7 @@ class ModbusThread(Thread):
                         grouped_registers.append([])
                         continue
                     grouped_registers.append(result.registers)
+                    self.number_of_success += 1
 
                 print('點位分區:', self.grouped_numbers)
                 print('分區資料:', grouped_registers)
@@ -272,7 +277,7 @@ class ModbusThread(Thread):
                     if history_data:
                         history_data['date_time'] = time.strftime("%Y-%m-%d %H:%M:%S", current_time)
                         print(history_data)
-                        emit('update_history', history_data, namespace='/', broadcast=True, room=self.room)
+                        emit('update_history', {'history': history_data, 'number_success': f'{self.number_of_success}/{self.number_of_connect}'}, namespace='/', broadcast=True, room=self.room)
 
         finally:
             # print('斷開連線', self.room)

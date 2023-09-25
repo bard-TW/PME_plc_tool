@@ -75,8 +75,8 @@ var history_table = $('#history_table').DataTable({
     'columnDefs': [{ "targets": 0, 'className': 'text-center' }],
     'columns': [{ className: 'dt-text', data: "date_time" }],
     "lengthMenu": [
-        [5, 20, 50, 100, 200],
-        [5, 20, 50, 100, 200]
+        [20, 50, 100, 200],
+        [20, 50, 100, 200]
     ]
 });
 
@@ -353,8 +353,8 @@ function reset_history_checkbox() {
         history_table = $('#history_table').DataTable({
             'language': language,
             "lengthMenu": [
-                [5, 20, 50, 100, 200],
-                [5, 20, 50, 100, 200]
+                [20, 50, 100, 200],
+                [20, 50, 100, 200]
             ]
         });
     } else {
@@ -366,8 +366,8 @@ function reset_history_checkbox() {
             'columnDefs': history_columnDefs,
             'columns': history_columns,
             "lengthMenu": [
-                [5, 20, 50, 100, 200],
-                [5, 20, 50, 100, 200]
+                [20, 50, 100, 200],
+                [20, 50, 100, 200]
             ],
             "order": [[0, "desc"]],
         });

@@ -1,6 +1,7 @@
 <!doctype html>
 <html> 
-    <!-- data-bs-theme="dark" -->
+<!-- <html data-bs-theme="dark">  -->
+
 <head>
     <title>Modbus Scan</title>
     <!-- jquery -->
@@ -83,8 +84,17 @@
                     </div>
                 </div>
 
-                <div class="progress g-2 my-2" role="progressbar" aria-label="Animated striped example" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width: 0%" id="progressbar">連線中</div>
+                <div class="container text-center">
+                <div class="row">
+                    <div class="col col-lg-2" id="number_success" title="成功數/取資料次數，重新連線會重置">
+                    0/0
+                    </div>
+                    <div class="col">
+                        <div class="progress g-2 my-2" role="progressbar" aria-label="Animated striped example" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width: 0%" id="progressbar">連線中</div>
+                        </div>
+                    </div>
+                </div>
                 </div>
 
                 <div class="row g-2 my-2">
@@ -115,6 +125,7 @@
                         </thead>
                     </table>
                 </div>
+                <br>
 
                 <div class="g-2 my-2">
                     <h3>折線圖</h3>

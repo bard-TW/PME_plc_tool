@@ -18,11 +18,6 @@ function reset_chart() {
         chart.destroy();
     }
 
-    // if (history_columns_list.length === 0){
-    //     alert('請先紀錄logs')
-    //     return
-    // }
-
     history_data = history_table.rows().data().toArray()
 
     if (history_data.length === 0) {
@@ -38,8 +33,6 @@ function reset_chart() {
     chart_dates = []
 
     for ([i, value] of history_data.slice(0,60).reverse().entries()) {
-
-        // chart_dates.push(new Date(value.date_time.replace(' ', 'T')))
         chart_dates.push(value.date_time.split(" ")[1])
         for ([_, chart_value] of chart_datasets.entries()) {
             if (chart_value.id in value) {
@@ -57,6 +50,9 @@ function reset_chart() {
             datasets: chart_datasets
         },
         options: {
+            animation: {
+                duration: 0 // 禁用动画
+            },
             scales: {
                 x: {
                     ticks:{
@@ -72,12 +68,11 @@ function update_chart(data) {
     var myLineChart = Chart.getChart(ctx);
     if (myLineChart) {
         chart_dates.push(data.date_time.split(" ")[1])
-        // chart_dates.push(new Date(data.date_time.replace(' ', 'T')))
         for ([_, chart_value] of chart_datasets.entries()) {
             if (chart_value.id in data) {
                 chart_value.data.push(data[chart_value.id])
             } else {
-                chart_value.data.push('')
+                chart_value.data.push(null)
             }
             if (chart_value.data.length > 60){
                 chart_value.data.shift()
