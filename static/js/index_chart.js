@@ -32,7 +32,7 @@ function reset_chart() {
 
     chart_dates = []
 
-    for ([i, value] of history_data.slice(0,60).reverse().entries()) {
+    for ([i, value] of history_data.slice(0, 60).reverse().entries()) {
         chart_dates.push(value.date_time.split(" ")[1])
         for ([_, chart_value] of chart_datasets.entries()) {
             if (chart_value.id in value) {
@@ -55,11 +55,24 @@ function reset_chart() {
             },
             scales: {
                 x: {
-                    ticks:{
+                    ticks: {
                         maxTicksLimit: 10
                     }
                 }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index',
             }
+        },
+        plugins: {
+            title: {
+                display: true,
+                text: (ctx) => {
+                    const { axis = 'xy', intersect, mode } = ctx.chart.options.interaction;
+                    return 'Mode: ' + mode + ', axis: ' + axis + ', intersect: ' + intersect;
+                }
+            },
         }
     });
 }
@@ -74,12 +87,12 @@ function update_chart(data) {
             } else {
                 chart_value.data.push(null)
             }
-            if (chart_value.data.length > 60){
+            if (chart_value.data.length > 60) {
                 chart_value.data.shift()
             }
         }
 
-        if (chart_dates.length > 60){
+        if (chart_dates.length > 60) {
             chart_dates.shift()
         }
         myLineChart.update()

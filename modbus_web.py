@@ -1,5 +1,8 @@
 # import subprocess
+import argparse
+import subprocess
 import time
+import traceback
 from abc import ABC, abstractmethod
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from textwrap import dedent
@@ -13,8 +16,6 @@ from ping3 import ping
 from pymodbus.client import ModbusTcpClient
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadDecoder
-
-import traceback
 
 # request.sid 連線房間
 
@@ -294,5 +295,21 @@ def ping_ip(ip_address):
     else:
         return False
 
+
+def get_commandline():
+    """可輸入參數"""
+    parser = argparse.ArgumentParser(description="Command line options")
+    parser.add_argument("--port", help="port", default=8000, type=int)
+    parser.add_argument("--ip", help="IP", default="127.0.0.1", type=str)
+    args = parser.parse_args()
+    print(args.port, args.ip)
+    return args.port, args.ip
+
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    # from waitress import serve
+    # serve(app, host="0.0.0.0", port=8080)
+    port, ip = get_commandline()
+
+    url = f"http://{ip}:{port}"
+    subprocess.Popen(["start", url], shell=True)
+    socketio.run(app, debug=False, host=ip, port=port)
