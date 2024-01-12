@@ -2,4 +2,4 @@ lxml==4.9.2
 pandas==2.0.1
 pyinstaller==5.13.0
 openpyxl==3.1.2
-pymodbus==3.4.1
+pymodbus==3.6.3
